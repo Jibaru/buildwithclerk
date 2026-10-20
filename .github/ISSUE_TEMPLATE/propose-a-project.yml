@@ -1,0 +1,56 @@
+name: Propose a project
+description: Suggest a product to add to the gallery
+title: "[Project] "
+labels: ["proposal"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Name
+      placeholder: Till
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is the product?
+      description: One paragraph a stranger would understand. Who uses it and for what.
+    validations:
+      required: true
+  - type: input
+    id: hero
+    attributes:
+      label: Hero Clerk feature
+      description: The one feature the title leads with.
+      placeholder: Multi-session applications
+    validations:
+      required: true
+  - type: dropdown
+    id: district
+    attributes:
+      label: City district
+      options: [Arcade (games), Downtown (B2B, fintech), Market (commerce, POS), Broadcast (media), Terminal (CLI, plugins, agents)]
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why would someone clone it?
+      description: What real auth problem does it solve that the existing examples do not?
+    validations:
+      required: true
+  - type: input
+    id: stack
+    attributes:
+      label: Stack
+      placeholder: Expo, Hono, SQLite
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: The five checks
+      options:
+        - label: It is a real product, not a demo of an API.
+        - label: One hero feature leads.
+        - label: It can have a public demo with "Try as demo user".
+        - label: It fits in ~2k lines of application code.
+        - label: It has a backend that verifies tokens.
