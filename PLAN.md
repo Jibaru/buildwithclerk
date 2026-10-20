@@ -5,7 +5,7 @@ Decisions from the design interview on 2026-10-19. The city's game design is in 
 ## What we are building
 
 - **buildwithclerk.com**: an official Clerk gallery of real products built with Clerk, started in `jibaru/buildwithclerk` and moved to the `clerk` GitHub org once five or more projects are live.
-- Two surfaces over one registry: a conventional, indexable gallery at `/` with a page per project at `/p/[slug]`, and an optional explorable pixel-art city at `/city`.
+- **The landing is the city.** `/` is one viewport with no scroll: the explorable pixel-art city is the gallery. Every project is a building; entering one opens a side panel with the project. `/p/[slug]` stays as the full, indexable page and deep-link target (`/?at=slug` opens the panel in the city). Decided on 2026-10-19 after two gallery-first iterations felt generic.
 - The site is project #0: it dogfoods Clerk (custom sign-in with Clerk Elements, anonymous → account, server-side XP and achievements, avatar in user metadata).
 - English first, Spanish second. Site and READMEs fully bilingual (`/` and `/es`); product UIs English with Spanish where cheap; Godot and the CLI English only in v1.
 
@@ -41,7 +41,7 @@ One Clerk workspace "Build with Clerk" with one production application per examp
 
 Clerk's tokens as they are: Suisse Intl, Söhne Mono, purple `#6c47ff`, the gray ramp, multi-layer shadows, 0.5 px hairlines, `motion` 12 with ease-out-cubic and bounce-free springs, `prefers-reduced-motion` honoured. Gallery follows the system theme; the city is always dark.
 
-`/` above the fold: the city alive as the hero background (small Phaser canvas, ambient, no controls; static image under reduced motion or without JS), the headline "Real products. Real auth.", two buttons ("Browse projects", "Enter the city"), then the project grid. Cards show a screenshot, platform, hero feature in mono uppercase, and "Live demo · Code".
+`/`: the Phaser canvas fills the viewport. HUD pills in clerk.com's dark style: logo top-left; "All projects" (an accessible list that teleports you to a door), GitHub, language and sign-in top-right; keys counter and the contextual hint bottom-left; controls bottom-right. A visually hidden project list is server-rendered for crawlers and no-JS.
 
 `/p/[slug]`: 15 s video or GIF with Live demo / Code buttons; "What it shows" with a link per Clerk feature to its doc; architecture SVG; 3–5 annotated "Key moments" snippets; "Run it locally" with `npx degit` and env vars; the pixel key if you own it.
 
@@ -51,9 +51,9 @@ Analytics: Vercel Analytics on the site only. Nothing in the examples.
 
 | | Deliverable | Done when |
 | --- | --- | --- |
-| M1 | Monorepo, `apps/web` gallery, registry, site sign-in (#0) | `/` and `/p/[slug]` render from the registry in en and es; sign-in works; deployed |
+| M1 | Monorepo, registry, site sign-in (#0), **city v0 as the landing** | `/` is the walkable city with every building, signs, side panel and `?at=` deep links; `/p/[slug]` in en and es; sign-in works; deployed |
 | M2 | **Last Run** | Playable at `lastrun.buildwithclerk.com`, passkey claim, server-side replay check |
-| M3 | **City v0** | One building, door prompt, panel with URL sync, key redeem end to end against Last Run |
+| M3 | **Keys** | `<ClerkKey />` in Last Run, redeem endpoint, XP and achievements persisted, anonymous cookie → account migration |
 | M4 | **relay CLI** + minimal Relay | PKCE and device flow both work; `--json`; keychain; API key for CI |
 | M5 | **Uptime Pages** | Two orgs with their own satellite domains, SAML against a test IdP, two plans |
 | M6 | **Frequency** | Two plans, signed media URLs, `/tv` with device flow |

@@ -5,8 +5,6 @@ import { notFound } from 'next/navigation'
 import { hasLocale, NextIntlClientProvider } from 'next-intl'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { ThemeProvider } from 'next-themes'
-import { Footer } from '@/components/site/Footer'
-import { Header } from '@/components/site/Header'
 import { routing } from '@/i18n/routing'
 import { SITE_URL } from '@/lib/constants'
 import { geistMono, inter } from '@/lib/fonts'
@@ -44,9 +42,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
               enableSystem={false}
               disableTransitionOnChange
             >
-              <Header />
-              <main className="flex-1">{children}</main>
-              <Footer />
+              {children}
             </ThemeProvider>
           </NextIntlClientProvider>
         </ClerkProvider>

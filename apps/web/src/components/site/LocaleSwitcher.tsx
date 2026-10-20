@@ -6,7 +6,7 @@ import { Link, usePathname } from '@/i18n/navigation'
 import { routing } from '@/i18n/routing'
 import { cn } from '@/lib/cn'
 
-export function LocaleSwitcher() {
+export function LocaleSwitcher({ className }: { className?: string }) {
   const locale = useLocale()
   const pathname = usePathname()
   const next = routing.locales.find((l) => l !== locale) ?? routing.defaultLocale
@@ -14,7 +14,7 @@ export function LocaleSwitcher() {
     <Link
       href={pathname}
       locale={next}
-      className={cn(button({ variant: 'ghost', size: 'sm' }), 'font-mono uppercase')}
+      className={cn(button({ variant: 'ghost', size: 'sm' }), 'font-mono uppercase', className)}
       aria-label={next === 'es' ? 'Cambiar a español' : 'Switch to English'}
     >
       {next}

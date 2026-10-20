@@ -54,7 +54,7 @@ export const projects: Project[] = [
     heroFeature: 'passkeys',
     features: [feature('passkeys'), feature('anonymous-to-account'), feature('backend-verification')],
     links: { demo: null, repo: path('examples/last-run'), path: 'examples/last-run' },
-    city: { district: 'arcade', position: { x: 28, y: 5 }, sprite: 'building-lastrun' },
+    city: { district: 'arcade', position: { x: 27, y: 5 }, sprite: 'building-lastrun' },
   },
   {
     slug: 'couch-code',
@@ -75,7 +75,7 @@ export const projects: Project[] = [
     heroFeature: 'device-flow',
     features: [feature('device-flow'), feature('go-sdk'), feature('m2m-tokens')],
     links: { demo: null, repo: path('examples/couch-code'), path: 'examples/couch-code' },
-    city: { district: 'arcade', position: { x: 36, y: 5 }, sprite: 'building-couchcode' },
+    city: { district: 'arcade', position: { x: 34, y: 4 }, sprite: 'building-couchcode' },
   },
   {
     slug: 'postal-chess',
@@ -96,7 +96,7 @@ export const projects: Project[] = [
     heroFeature: 'invitations',
     features: [feature('invitations'), feature('expo-sdk')],
     links: { demo: null, repo: path('examples/postal-chess'), path: 'examples/postal-chess' },
-    city: { district: 'arcade', position: { x: 22, y: 7 }, sprite: 'building-scaffold' },
+    city: { district: 'arcade', position: { x: 21, y: 8 }, sprite: 'building-scaffold' },
   },
   {
     slug: 'uptime-pages',
@@ -124,7 +124,7 @@ export const projects: Project[] = [
       feature('has-helper'),
     ],
     links: { demo: null, repo: path('examples/uptime-pages'), path: 'examples/uptime-pages' },
-    city: { district: 'downtown', position: { x: 50, y: 16 }, sprite: 'building-uptime' },
+    city: { district: 'downtown', position: { x: 44, y: 15 }, sprite: 'building-uptime' },
   },
   {
     slug: 'relay',
@@ -145,7 +145,7 @@ export const projects: Project[] = [
     heroFeature: 'api-keys',
     features: [feature('api-keys'), feature('m2m-tokens'), feature('oauth-provider'), feature('mcp')],
     links: { demo: null, repo: path('examples/relay'), path: 'examples/relay' },
-    city: { district: 'terminal', position: { x: 48, y: 6 }, sprite: 'building-relay' },
+    city: { district: 'terminal', position: { x: 42, y: 5 }, sprite: 'building-relay' },
   },
   {
     slug: 'till',
@@ -166,7 +166,7 @@ export const projects: Project[] = [
     heroFeature: 'multi-session',
     features: [feature('multi-session'), feature('custom-roles'), feature('organizations')],
     links: { demo: null, repo: path('examples/till'), path: 'examples/till' },
-    city: { district: 'market', position: { x: 30, y: 31 }, sprite: 'building-till' },
+    city: { district: 'market', position: { x: 27, y: 30 }, sprite: 'building-till' },
   },
   {
     slug: 'frequency',
@@ -192,7 +192,7 @@ export const projects: Project[] = [
       feature('backend-verification'),
     ],
     links: { demo: null, repo: path('examples/frequency'), path: 'examples/frequency' },
-    city: { district: 'broadcast', position: { x: 8, y: 16 }, sprite: 'building-frequency' },
+    city: { district: 'broadcast', position: { x: 8, y: 15 }, sprite: 'building-frequency' },
   },
   {
     slug: 'margin',
@@ -213,7 +213,7 @@ export const projects: Project[] = [
     heroFeature: 'satellite-domains',
     features: [feature('satellite-domains')],
     links: { demo: null, repo: path('examples/margin'), path: 'examples/margin' },
-    city: { district: 'broadcast', position: { x: 8, y: 23 }, sprite: 'building-scaffold' },
+    city: { district: 'broadcast', position: { x: 14, y: 15 }, sprite: 'building-scaffold' },
   },
   {
     slug: 'relay-cli',
@@ -234,7 +234,7 @@ export const projects: Project[] = [
     heroFeature: 'oauth-pkce',
     features: [feature('oauth-pkce'), feature('device-flow'), feature('api-keys')],
     links: { demo: null, repo: path('examples/relay-cli'), path: 'examples/relay-cli' },
-    city: { district: 'terminal', position: { x: 54, y: 8 }, sprite: 'building-scaffold' },
+    city: { district: 'terminal', position: { x: 48, y: 5 }, sprite: 'building-scaffold' },
   },
   {
     slug: 'snips',
@@ -255,7 +255,7 @@ export const projects: Project[] = [
     heroFeature: 'device-flow',
     features: [feature('device-flow'), feature('organizations')],
     links: { demo: null, repo: path('examples/snips'), path: 'examples/snips' },
-    city: { district: 'terminal', position: { x: 48, y: 12 }, sprite: 'building-scaffold' },
+    city: { district: 'terminal', position: { x: 54, y: 5 }, sprite: 'building-scaffold' },
   },
   {
     slug: 'clip',
@@ -276,7 +276,7 @@ export const projects: Project[] = [
     heroFeature: 'sync-host',
     features: [feature('sync-host'), feature('chrome-extension')],
     links: { demo: null, repo: path('examples/clip'), path: 'examples/clip' },
-    city: { district: 'terminal', position: { x: 56, y: 13 }, sprite: 'building-scaffold' },
+    city: { district: 'terminal', position: { x: 60, y: 5 }, sprite: 'building-scaffold' },
   },
   {
     slug: 'linker',
@@ -297,7 +297,7 @@ export const projects: Project[] = [
     heroFeature: 'oauth-provider',
     features: [feature('oauth-provider'), feature('webhooks'), feature('custom-roles')],
     links: { demo: null, repo: path('examples/linker'), path: 'examples/linker' },
-    city: { district: 'terminal', position: { x: 60, y: 6 }, sprite: 'building-scaffold' },
+    city: { district: 'terminal', position: { x: 46, y: 12 }, sprite: 'building-scaffold' },
   },
   {
     slug: 'concierge',
@@ -318,7 +318,7 @@ export const projects: Project[] = [
     heroFeature: 'oauth-provider',
     features: [feature('oauth-provider'), feature('mcp')],
     links: { demo: null, repo: path('examples/concierge'), path: 'examples/concierge' },
-    city: { district: 'terminal', position: { x: 60, y: 12 }, sprite: 'building-scaffold' },
+    city: { district: 'terminal', position: { x: 54, y: 12 }, sprite: 'building-scaffold' },
   },
   {
     slug: 'vault',
@@ -339,7 +339,7 @@ export const projects: Project[] = [
     heroFeature: 'reverification',
     features: [feature('reverification'), feature('passkeys'), feature('sessions-api')],
     links: { demo: null, repo: path('examples/vault'), path: 'examples/vault' },
-    city: { district: 'downtown', position: { x: 56, y: 20 }, sprite: 'building-scaffold' },
+    city: { district: 'downtown', position: { x: 50, y: 15 }, sprite: 'building-scaffold' },
   },
   {
     slug: 'exodus',
@@ -360,6 +360,6 @@ export const projects: Project[] = [
     heroFeature: 'user-import',
     features: [feature('user-import')],
     links: { demo: null, repo: path('examples/exodus'), path: 'examples/exodus' },
-    city: { district: 'downtown', position: { x: 50, y: 24 }, sprite: 'building-scaffold' },
+    city: { district: 'downtown', position: { x: 56, y: 15 }, sprite: 'building-scaffold' },
   },
 ]

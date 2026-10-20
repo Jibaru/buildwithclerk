@@ -63,7 +63,8 @@
     "districtOf": "{district} district",
     "backToProjects": "All projects",
     "plannedNotice": "This project is planned for {milestone}. The page fills in as it ships.",
-    "backlogNotice": "This project is on the backlog. Want to build it? Open a proposal on GitHub."
+    "backlogNotice": "This project is on the backlog. Want to build it? Open a proposal on GitHub.",
+    "openInCity": "Open in the city"
   },
   "city": {
     "title": "Clerk City",
@@ -104,5 +105,16 @@
     "body": "Walk the pixel city, step into a project, try its demo, and bring the key back. Collect them all and the city is yours.",
     "cta": "Enter the city",
     "secondary": "Create your player"
+  },
+  "hud": {
+    "index": "All projects",
+    "close": "Close",
+    "signIn": "Sign in",
+    "loading": "Loading the city…",
+    "hint": "Walk up to a building and press E",
+    "near": "Press E to enter {title}",
+    "controls": "WASD / arrows · E enter · Esc close · tap to walk",
+    "fullPage": "Full page",
+    "indexHint": "Pick a project to walk to its door. Language: {locale}"
   }
 }

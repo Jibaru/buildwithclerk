@@ -10,7 +10,7 @@
 | Scope | weekend-prototype sized hub, not a game with difficulty: one map, one screen per building, zero extra systems |
 | References | Pokémon-style portfolio sites (walkable index), Poolsuite.net (persistent music player as identity), clerk.com (chrome, palette, motion) |
 
-The city is an optional surface. `/` is a conventional, indexable gallery; "Enter the city" opens the map full screen. Both read the same project registry (`packages/registry`).
+The city **is** the landing page: `/` is the map, full viewport, no scroll. There is no separate gallery grid; the accessible "All projects" list in the HUD and the per-project pages at `/p/[slug]` are the non-game twins. Everything reads the project registry (`packages/registry`).
 
 ## Core loop
 
@@ -89,7 +89,7 @@ There is no difficulty curve. Progression is the key count and the growing set o
 - **Style**: 16 px pixel art, Kenney packs, rendered at night. No recoloring of the packs; the Clerk identity comes from lighting.
 - **Palette**: `#131316` sky/background (gray-950) · `#230b6a` ambient tint (purple-950) · `#6c47ff` window and lamp light (purple-500) · `#00aee3` signs and water (sky-500) · `#d9d9de` text and UI hairlines (gray-200) · `#ffffff` HUD text · `#22c543` reserved for "key collected"
 - **Readability**: the player is the only sprite with a white 1 px outline. Enterable doors glow; non-enterable buildings do not. Text never sits directly on tiles, always on a translucent gray-950 plate.
-- **Resolution / camera**: tilemap 64×40 tiles (1024×640 px). Canvas fills the viewport; zoom ×3 on desktop, ×2 under 640 px wide. Pixel-perfect rendering, nearest-neighbour, no sub-pixel camera positions.
+- **Resolution / camera**: tilemap 64×40 tiles (1024×640 px). Canvas fills the viewport; zoom ×3 on desktop, ×2 under 640 px wide. Pixel-perfect rendering, nearest-neighbour, no sub-pixel camera positions. Night is a multiply rectangle (`#8b82d6`) over the world plus additive radial glows: purple on lit windows and doors, warm on lamps.
 - **UI / HUD**: bottom bar, 56 px tall, gray-950 at 80 % with a 0.5 px top hairline: avatar + name (or "Guest"), keys `n/N` with a pixel key icon, XP, music play/pause with the track name in Söhne Mono uppercase, and "Exit city". Top-left: current district name on entry. Everything else is in the project panel.
 - **Map layout**: plaza in the centre with Clerk HQ; districts in a star: Arcade north, Terminal north-east, Downtown east, Market south, Broadcast west. Each district has room for 3–4 buildings. Roads are 2 tiles wide, lit by lamps every 6 tiles.
 
@@ -102,9 +102,9 @@ There is no difficulty curve. Progression is the key count and the growing set o
 
 | Key | Description | Source | Status |
 | --- | --- | --- | --- |
-| tiles-urban | Streets, sidewalks, grass, water, generic buildings | kenney:rpg-urban-pack | todo |
+| tiles-urban | Streets, sidewalks, grass, water, walls, doors, windows, lamps, trees | kenney:rpg-urban-pack | done |
 | tiles-city | Modern props, lamps, signs, vehicles | kenney:roguelike-modern-city | todo |
-| characters | 8 player avatars, 4-direction walk | kenney:roguelike-characters | todo |
+| characters | 6 player avatars, 4 directions × 3 frames, columns 23–26 of the sheet | kenney:rpg-urban-pack | done |
 | building-hq | Clerk HQ, 64×64, lit roof variant | generate (PixelLab) or hand-drawn | todo |
 | building-lastrun | Arcade hall with neon marquee, 48×48 | generate | todo |
 | building-couchcode | Living-room facade with a giant TV, 48×48 | generate | todo |
@@ -138,3 +138,4 @@ Credits land in `apps/web/public/assets/CREDITS.md` via `game-assets`.
 ## Changelog
 
 - 2026-10-19: GDD created after a three-round design interview.
+- 2026-10-19: the city became the landing page itself (no gallery grid). Map generated procedurally from the registry (`apps/web/src/game/citymap.ts`): plaza + fountain, six 2-tile roads, pavement, BFS-paved paths to every door, lamps and trees. Buildings are 3×3 wall sets from kenney:rpg-urban-pack with a door and three windows; planned projects render gray. Player avatars come from the same pack (6 characters, 4 directions, 3 frames). M1 and M3 merged accordingly.

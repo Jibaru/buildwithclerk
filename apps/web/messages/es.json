@@ -63,7 +63,8 @@
     "districtOf": "Distrito {district}",
     "backToProjects": "Todos los proyectos",
     "plannedNotice": "Este proyecto está planeado para {milestone}. La página se completa cuando se publique.",
-    "backlogNotice": "Este proyecto está en el backlog. ¿Quieres construirlo? Abre una propuesta en GitHub."
+    "backlogNotice": "Este proyecto está en el backlog. ¿Quieres construirlo? Abre una propuesta en GitHub.",
+    "openInCity": "Abrir en la ciudad"
   },
   "city": {
     "title": "Clerk City",
@@ -104,5 +105,16 @@
     "body": "Camina por la ciudad pixel, entra a un proyecto, prueba su demo y trae la llave de vuelta. Reúnelas todas y la ciudad es tuya.",
     "cta": "Entrar a la ciudad",
     "secondary": "Crea tu jugador"
+  },
+  "hud": {
+    "index": "Todos los proyectos",
+    "close": "Cerrar",
+    "signIn": "Iniciar sesión",
+    "loading": "Cargando la ciudad…",
+    "hint": "Acércate a un edificio y pulsa E",
+    "near": "Pulsa E para entrar a {title}",
+    "controls": "WASD / flechas · E entrar · Esc cerrar · toca para caminar",
+    "fullPage": "Página completa",
+    "indexHint": "Elige un proyecto para caminar hasta su puerta. Idioma: {locale}"
   }
 }
