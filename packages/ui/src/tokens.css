@@ -1,0 +1,69 @@
+/*
+ * Design tokens mirrored from clerk.com (src/styles/globals.css in the clerk/clerk repo).
+ * Tailwind v4 reads this through `@import "@buildwithclerk/ui/tokens.css"` inside a `@theme` block
+ * in apps/web. Keep values in sync with clerk.com rather than inventing new ones here.
+ */
+
+:root {
+  /* Type. Clerk uses Suisse Intl + Söhne Mono under licence; we ship Inter + Geist Mono
+     and swap by redefining --font-sans / --font-mono in apps/web once the licence is confirmed. */
+  --bwc-font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --bwc-font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Brand */
+  --bwc-purple-50: #f4f2ff;
+  --bwc-purple-100: #eae8ff;
+  --bwc-purple-200: #d7d4ff;
+  --bwc-purple-300: #bab1ff;
+  --bwc-purple-400: #9785ff;
+  --bwc-purple-500: #6c47ff;
+  --bwc-purple-600: #6430f7;
+  --bwc-purple-700: #561ee3;
+  --bwc-purple-800: #4818bf;
+  --bwc-purple-950: #230b6a;
+
+  /* Gray */
+  --bwc-gray-25: #fafafb;
+  --bwc-gray-50: #f7f7f8;
+  --bwc-gray-100: #eeeef0;
+  --bwc-gray-150: #e3e3e7;
+  --bwc-gray-200: #d9d9de;
+  --bwc-gray-300: #b7b8c2;
+  --bwc-gray-400: #9394a1;
+  --bwc-gray-500: #747686;
+  --bwc-gray-600: #5e5f6e;
+  --bwc-gray-700: #42434d;
+  --bwc-gray-750: #373840;
+  --bwc-gray-800: #2f3037;
+  --bwc-gray-850: #27272d;
+  --bwc-gray-900: #212126;
+  --bwc-gray-950: #131316;
+
+  /* Accents */
+  --bwc-sky-500: #00aee3;
+  --bwc-green-500: #22c543;
+  --bwc-red-500: #ef4444;
+  --bwc-orange-500: #f36b16;
+
+  /* Motion */
+  --bwc-ease-out-cubic: cubic-bezier(0.33, 1, 0.68, 1);
+  --bwc-ease-swift-out: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --bwc-duration-fast: 0.2s;
+  --bwc-duration-base: 0.3s;
+  --bwc-duration-slow: 0.5s;
+
+  /* Shadows (always multi-layer, like clerk.com bento cards) */
+  --bwc-shadow-card:
+    0 1px 1px rgba(0, 0, 0, 0.05), 0 4px 6px rgba(34, 42, 53, 0.04), 0 24px 68px rgba(47, 48, 55, 0.05),
+    0 2px 3px rgba(0, 0, 0, 0.04);
+  --bwc-shadow-button: 0 1px rgba(255, 255, 255, 0.07) inset, 0 1px 3px rgba(33, 33, 38, 0.2);
+  --bwc-hairline: 0.5px;
+
+  /* City (World mode) palette: see GDD.md */
+  --bwc-city-sky: #131316;
+  --bwc-city-tint: #230b6a;
+  --bwc-city-light: #6c47ff;
+  --bwc-city-sign: #00aee3;
+  --bwc-city-text: #d9d9de;
+  --bwc-city-collected: #22c543;
+}

@@ -9,7 +9,7 @@
       "!**/.turbo",
       "!**/dist",
       "!**/out",
-      "!**/public/assets/**",
+      "!**/public/assets",
       "!**/*.gd",
       "!**/*.go",
       "!**/*.py"
@@ -31,7 +31,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "suspicious": {
         "noConsole": { "level": "warn", "options": { "allow": ["warn", "error"] } }
       },

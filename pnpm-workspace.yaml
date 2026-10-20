@@ -5,7 +5,7 @@ packages:
   # (Godot, Go, Python) live in examples/ without one and are ignored here.
   - examples/*
 
-onlyBuiltDependencies:
-  - '@biomejs/biome'
-  - sharp
-  - esbuild
+allowBuilds:
+  '@biomejs/biome': true
+  esbuild: true
+  sharp: true
