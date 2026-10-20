@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+  # JS/TS examples opt in by having a package.json; non-JS examples
+  # (Godot, Go, Python) live in examples/ without one and are ignored here.
+  - examples/*
+
+onlyBuiltDependencies:
+  - '@biomejs/biome'
+  - sharp
+  - esbuild

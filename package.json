@@ -1,0 +1,25 @@
+{
+  "name": "buildwithclerk",
+  "private": true,
+  "version": "0.0.0",
+  "description": "A gallery of real products built with Clerk, and the pixel-art city that indexes them.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "dev": "turbo run dev --filter=@buildwithclerk/web",
+    "build": "turbo run build",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "registry:check": "pnpm --filter @buildwithclerk/registry check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "turbo": "2.11.9",
+    "typescript": "5.0.5"
+  }
+}
