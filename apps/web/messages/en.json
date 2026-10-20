@@ -97,5 +97,12 @@
     "title": "Nothing here",
     "body": "This street does not exist yet.",
     "home": "Back to the plaza"
+  },
+  "cityBand": {
+    "eyebrow": "Clerk City",
+    "title": "Every project is a building. Every live demo hands you a key.",
+    "body": "Walk the pixel city, step into a project, try its demo, and bring the key back. Collect them all and the city is yours.",
+    "cta": "Enter the city",
+    "secondary": "Create your player"
   }
 }

@@ -97,5 +97,12 @@
     "title": "Aquí no hay nada",
     "body": "Esta calle todavía no existe.",
     "home": "Volver a la plaza"
+  },
+  "cityBand": {
+    "eyebrow": "Clerk City",
+    "title": "Cada proyecto es un edificio. Cada demo en vivo te entrega una llave.",
+    "body": "Camina por la ciudad pixel, entra a un proyecto, prueba su demo y trae la llave de vuelta. Reúnelas todas y la ciudad es tuya.",
+    "cta": "Entrar a la ciudad",
+    "secondary": "Crea tu jugador"
   }
 }

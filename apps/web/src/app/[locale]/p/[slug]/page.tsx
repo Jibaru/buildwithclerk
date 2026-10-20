@@ -57,7 +57,7 @@ export default async function ProjectPage({ params }: PageProps<'/[locale]/p/[sl
             </span>
           </div>
           <div className="flex flex-col gap-3">
-            {hero ? <Tag className="text-purple-600 dark:text-purple-300">{hero.name[locale]}</Tag> : null}
+            {hero ? <p className="text-sm font-medium text-purple-500">{hero.name[locale]}</p> : null}
             <h1 className="text-4xl font-bold tracking-tight text-gray-950 sm:text-5xl dark:text-white">
               {project.title}
             </h1>

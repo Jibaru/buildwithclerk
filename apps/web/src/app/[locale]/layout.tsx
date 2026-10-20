@@ -38,7 +38,12 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
       <body className="flex min-h-dvh flex-col">
         <ClerkProvider signInUrl={`/${locale === 'en' ? '' : `${locale}/`}sign-in`} afterSignOutUrl="/">
           <NextIntlClientProvider>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              enableSystem={false}
+              disableTransitionOnChange
+            >
               <Header />
               <main className="flex-1">{children}</main>
               <Footer />
