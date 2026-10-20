@@ -7,5 +7,11 @@ packages:
 
 allowBuilds:
   '@biomejs/biome': true
+  '@clerk/shared': true
+  '@parcel/watcher': true
+  '@swc/core': true
   esbuild: true
   sharp: true
+
+autoInstallPeers: true
+strictPeerDependencies: false

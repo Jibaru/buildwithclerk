@@ -1,0 +1,159 @@
+@import "tailwindcss";
+@import "@buildwithclerk/ui/tokens.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme static {
+  --font-sans: var(--bwc-font-sans);
+  --font-mono: var(--bwc-font-mono);
+
+  --color-purple-50: var(--bwc-purple-50);
+  --color-purple-100: var(--bwc-purple-100);
+  --color-purple-200: var(--bwc-purple-200);
+  --color-purple-300: var(--bwc-purple-300);
+  --color-purple-400: var(--bwc-purple-400);
+  --color-purple-500: var(--bwc-purple-500);
+  --color-purple-600: var(--bwc-purple-600);
+  --color-purple-700: var(--bwc-purple-700);
+  --color-purple-800: var(--bwc-purple-800);
+  --color-purple-950: var(--bwc-purple-950);
+
+  --color-gray-25: var(--bwc-gray-25);
+  --color-gray-50: var(--bwc-gray-50);
+  --color-gray-100: var(--bwc-gray-100);
+  --color-gray-150: var(--bwc-gray-150);
+  --color-gray-200: var(--bwc-gray-200);
+  --color-gray-300: var(--bwc-gray-300);
+  --color-gray-400: var(--bwc-gray-400);
+  --color-gray-500: var(--bwc-gray-500);
+  --color-gray-600: var(--bwc-gray-600);
+  --color-gray-700: var(--bwc-gray-700);
+  --color-gray-750: var(--bwc-gray-750);
+  --color-gray-800: var(--bwc-gray-800);
+  --color-gray-850: var(--bwc-gray-850);
+  --color-gray-900: var(--bwc-gray-900);
+  --color-gray-950: var(--bwc-gray-950);
+
+  --color-sky-500: var(--bwc-sky-500);
+  --color-green-500: var(--bwc-green-500);
+  --color-red-500: var(--bwc-red-500);
+  --color-orange-500: var(--bwc-orange-500);
+
+  /* clerk.com type scale */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1.25rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.5rem;
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.75rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 2rem;
+  --text-3xl--line-height: 2.5rem;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+  --text-4xl--letter-spacing: -0.015em;
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 3.5rem;
+  --text-5xl--letter-spacing: -0.025em;
+  --text-6xl: 4rem;
+  --text-6xl--line-height: 4.5rem;
+  --text-6xl--letter-spacing: -0.035em;
+
+  --font-weight-book: 450;
+
+  --ease-out-cubic: var(--bwc-ease-out-cubic);
+  --ease-swift-out: var(--bwc-ease-swift-out);
+
+  --shadow-card: var(--bwc-shadow-card);
+  --shadow-button: var(--bwc-shadow-button);
+
+  --animate-fade-in: fade-in 0.3s linear both;
+  --animate-letter-reveal: letter-reveal 0.3s ease-out both;
+  --animate-float: float var(--float-duration, 4s) ease-in-out var(--float-delay, 0s) infinite;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes letter-reveal {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply overflow-x-clip bg-gray-50 font-sans text-base text-gray-950 dark:bg-gray-950 dark:text-gray-50;
+    font-feature-settings: "ss01", "cv11";
+  }
+  ::selection {
+    @apply bg-purple-500/20;
+  }
+  /* Reduced motion is handled per element with Tailwind's motion-reduce: variant. */
+}
+
+@utility tag-1 {
+  @apply font-mono text-2xs font-medium tracking-[0.1em] uppercase;
+}
+
+@utility hairline-t {
+  border-top: var(--bwc-hairline) solid color-mix(in srgb, var(--color-gray-950) 12%, transparent);
+  .dark & {
+    border-top-color: color-mix(in srgb, white 10%, transparent);
+  }
+}
+
+@utility hairline-b {
+  border-bottom: var(--bwc-hairline) solid color-mix(in srgb, var(--color-gray-950) 12%, transparent);
+  .dark & {
+    border-bottom-color: color-mix(in srgb, white 10%, transparent);
+  }
+}
+
+/* Dot grid, the bridge between clerk.com's dots and the city's tilemap. */
+@utility dot-grid {
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--color-gray-950) 14%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 16px 16px;
+  .dark & {
+    background-image: radial-gradient(color-mix(in srgb, white 12%, transparent) 1px, transparent 1px);
+  }
+}

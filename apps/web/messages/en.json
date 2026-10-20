@@ -1,0 +1,101 @@
+{
+  "site": {
+    "name": "Build with Clerk",
+    "tagline": "Real products. Real auth.",
+    "description": "A gallery of real products built with Clerk. Each one leads with a single feature, ships with a live demo, and is yours to clone."
+  },
+  "nav": {
+    "projects": "Projects",
+    "city": "Enter the city",
+    "github": "GitHub",
+    "signIn": "Sign in",
+    "profile": "Profile",
+    "language": "Language"
+  },
+  "hero": {
+    "eyebrow": "Clerk examples that are products, not demos",
+    "headline": "Real products. Real auth.",
+    "subheadline": "A gallery of complete apps built with Clerk: games, B2B, points of sale, media, CLIs and plugins. Each one leads with one Clerk feature, runs live, and is yours to clone.",
+    "browse": "Browse projects",
+    "enterCity": "Enter the city",
+    "cityHint": "Walk a pixel city where every building is a project. Collect keys from live demos."
+  },
+  "gallery": {
+    "title": "Projects",
+    "subtitle": "{count} products, each built around one Clerk feature.",
+    "liveDemo": "Live demo",
+    "code": "Code",
+    "comingSoon": "Coming soon",
+    "status": {
+      "live": "Live",
+      "building": "In progress",
+      "planned": "Planned"
+    },
+    "platforms": {
+      "web": "Web",
+      "mobile": "Mobile",
+      "desktop": "Desktop",
+      "tv": "TV",
+      "cli": "CLI",
+      "backend": "Backend",
+      "extension": "Extension",
+      "bot": "Bot",
+      "agent": "Agent"
+    },
+    "districts": {
+      "plaza": "Plaza",
+      "arcade": "Arcade",
+      "downtown": "Downtown",
+      "market": "Market",
+      "broadcast": "Broadcast",
+      "terminal": "Terminal"
+    }
+  },
+  "project": {
+    "whatItShows": "What it shows",
+    "heroFeature": "Hero feature",
+    "stack": "Stack",
+    "runLocally": "Run it locally",
+    "runLocallyHint": "Clone just this example, copy the env file, and follow its README.",
+    "envHint": "Then fill in the values listed in .env.example.",
+    "readDocs": "Read the docs",
+    "inTheCity": "In the city",
+    "districtOf": "{district} district",
+    "backToProjects": "All projects",
+    "plannedNotice": "This project is planned for {milestone}. The page fills in as it ships.",
+    "backlogNotice": "This project is on the backlog. Want to build it? Open a proposal on GitHub."
+  },
+  "city": {
+    "title": "Clerk City",
+    "comingSoon": "The city opens in milestone 3. For now, the gallery is the map.",
+    "back": "Back to the gallery"
+  },
+  "auth": {
+    "signInTitle": "Sign in to Clerk City",
+    "signInSubtitle": "Your keys, XP and avatar follow you across devices.",
+    "signUpTitle": "Create your player",
+    "signUpSubtitle": "Anonymous progress on this device moves into your account.",
+    "continue": "Continue",
+    "email": "Email address",
+    "code": "Verification code",
+    "codeHint": "We sent a code to your email.",
+    "or": "or",
+    "noAccount": "No account yet?",
+    "haveAccount": "Already have one?",
+    "signUp": "Create one",
+    "signIn": "Sign in",
+    "passkey": "Use a passkey",
+    "continueWith": "Continue with {provider}",
+    "verifying": "Checking…"
+  },
+  "footer": {
+    "built": "Built in the open by the Clerk community.",
+    "docs": "Clerk docs",
+    "contribute": "Contribute a project"
+  },
+  "notFound": {
+    "title": "Nothing here",
+    "body": "This street does not exist yet.",
+    "home": "Back to the plaza"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "site": {
+    "name": "Build with Clerk",
+    "tagline": "Productos reales. Auth real.",
+    "description": "Una galería de productos reales construidos con Clerk. Cada uno gira alrededor de una sola feature, tiene demo en vivo y es tuyo para clonar."
+  },
+  "nav": {
+    "projects": "Proyectos",
+    "city": "Entrar a la ciudad",
+    "github": "GitHub",
+    "signIn": "Iniciar sesión",
+    "profile": "Perfil",
+    "language": "Idioma"
+  },
+  "hero": {
+    "eyebrow": "Ejemplos de Clerk que son productos, no demos",
+    "headline": "Productos reales. Auth real.",
+    "subheadline": "Una galería de apps completas construidas con Clerk: juegos, B2B, puntos de venta, media, CLIs y plugins. Cada una gira alrededor de una feature de Clerk, corre en vivo y es tuya para clonar.",
+    "browse": "Ver proyectos",
+    "enterCity": "Entrar a la ciudad",
+    "cityHint": "Camina por una ciudad pixel donde cada edificio es un proyecto. Recoge llaves en las demos en vivo."
+  },
+  "gallery": {
+    "title": "Proyectos",
+    "subtitle": "{count} productos, cada uno construido alrededor de una feature de Clerk.",
+    "liveDemo": "Demo en vivo",
+    "code": "Código",
+    "comingSoon": "Pronto",
+    "status": {
+      "live": "En vivo",
+      "building": "En progreso",
+      "planned": "Planeado"
+    },
+    "platforms": {
+      "web": "Web",
+      "mobile": "Móvil",
+      "desktop": "Escritorio",
+      "tv": "TV",
+      "cli": "CLI",
+      "backend": "Backend",
+      "extension": "Extensión",
+      "bot": "Bot",
+      "agent": "Agente"
+    },
+    "districts": {
+      "plaza": "Plaza",
+      "arcade": "Arcade",
+      "downtown": "Centro",
+      "market": "Mercado",
+      "broadcast": "Broadcast",
+      "terminal": "Terminal"
+    }
+  },
+  "project": {
+    "whatItShows": "Qué muestra",
+    "heroFeature": "Feature principal",
+    "stack": "Stack",
+    "runLocally": "Córrelo en tu máquina",
+    "runLocallyHint": "Clona solo este ejemplo, copia el archivo de entorno y sigue su README.",
+    "envHint": "Luego completa los valores listados en .env.example.",
+    "readDocs": "Leer la documentación",
+    "inTheCity": "En la ciudad",
+    "districtOf": "Distrito {district}",
+    "backToProjects": "Todos los proyectos",
+    "plannedNotice": "Este proyecto está planeado para {milestone}. La página se completa cuando se publique.",
+    "backlogNotice": "Este proyecto está en el backlog. ¿Quieres construirlo? Abre una propuesta en GitHub."
+  },
+  "city": {
+    "title": "Clerk City",
+    "comingSoon": "La ciudad abre en el hito 3. Por ahora, la galería es el mapa.",
+    "back": "Volver a la galería"
+  },
+  "auth": {
+    "signInTitle": "Inicia sesión en Clerk City",
+    "signInSubtitle": "Tus llaves, XP y avatar te siguen entre dispositivos.",
+    "signUpTitle": "Crea tu jugador",
+    "signUpSubtitle": "El progreso anónimo de este dispositivo pasa a tu cuenta.",
+    "continue": "Continuar",
+    "email": "Correo electrónico",
+    "code": "Código de verificación",
+    "codeHint": "Te enviamos un código a tu correo.",
+    "or": "o",
+    "noAccount": "¿Aún no tienes cuenta?",
+    "haveAccount": "¿Ya tienes una?",
+    "signUp": "Crear una",
+    "signIn": "Iniciar sesión",
+    "passkey": "Usar un passkey",
+    "continueWith": "Continuar con {provider}",
+    "verifying": "Verificando…"
+  },
+  "footer": {
+    "built": "Construido en abierto por la comunidad de Clerk.",
+    "docs": "Docs de Clerk",
+    "contribute": "Contribuye un proyecto"
+  },
+  "notFound": {
+    "title": "Aquí no hay nada",
+    "body": "Esta calle todavía no existe.",
+    "home": "Volver a la plaza"
+  }
+}
