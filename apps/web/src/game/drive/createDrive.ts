@@ -1,7 +1,7 @@
 import type { Project } from '@buildwithclerk/registry'
 import * as THREE from 'three'
 import { ROAD_W } from './track'
-import { buildTrackWorld, COLORS, type Stop } from './trackWorld'
+import { buildTrackWorld, type Stop } from './trackWorld'
 import { loadVan, VanController } from './van'
 
 export type DriveEvents = {
@@ -45,8 +45,6 @@ export function createDrive(
   parent.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(COLORS.lime)
-  scene.fog = new THREE.Fog(COLORS.lime, 160, 420)
 
   const camera = new THREE.PerspectiveCamera(50, 1, 0.5, 600)
 
@@ -322,6 +320,7 @@ export function createDrive(
       sun.target.position.set(van.position.x, 0, van.position.z)
     }
 
+    world.env.update(dt, camera.position)
     renderer.render(scene, camera)
   }
 

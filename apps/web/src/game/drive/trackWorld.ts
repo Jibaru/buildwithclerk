@@ -1,8 +1,10 @@
 import type { Project } from '@buildwithclerk/registry'
 import * as THREE from 'three'
+import { buildEnvironment, type Environment } from './environment'
 import { buildPlace, loadKitModel } from './kits'
 import { PLACES, ROADSIDE_MODELS } from './places'
 import { DRIVEWAY_W, makeRoadTexture, ROAD_W, SHOULDER_W, Track } from './track'
+import { scatterVegetation } from './vegetation'
 
 export const COLORS = {
   lime: 0x7cff00,
@@ -41,7 +43,9 @@ export type Stop = {
 export type World = {
   track: Track
   stops: Stop[]
+  /** The terrain, for raycasting taps. */
   ground: THREE.Mesh
+  env: Environment
   pickables: THREE.Object3D[]
   /** Resolves when every place has its models; decor keeps streaming after. */
   ready: Promise<void>
@@ -58,11 +62,8 @@ export function buildTrackWorld(scene: THREE.Scene, projects: Project[]): World 
   root.name = 'world'
   scene.add(root)
 
-  // Ground.
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1600, 1600), mat(COLORS.lime, 1))
-  ground.rotation.x = -Math.PI / 2
-  ground.receiveShadow = true
-  root.add(ground)
+  // Terrain, sky, clouds and fog. Flat within FLAT_RADIUS of the road, hills and mountains beyond.
+  const env = buildEnvironment(scene, track)
 
   // Road: a pale shoulder under a textured asphalt ribbon.
   const shoulder = new THREE.Mesh(track.buildRibbon(ROAD_W + SHOULDER_W * 2, 0.02), mat(COLORS.pavement, 1))
@@ -178,13 +179,17 @@ export function buildTrackWorld(scene: THREE.Scene, projects: Project[]): World 
 
   const ready = Promise.all(loads).then(() => undefined)
 
-  // Roadside decor streams in after the places.
-  ready.then(() => scatterRoadside(root, track, stops)).catch(() => undefined)
+  // Lamps and vegetation stream in after the places.
+  ready
+    .then(() => placeLamps(root, track, stops))
+    .then(() => scatterVegetation(root, track, stops, env.heightAt))
+    .catch((err) => console.error('vegetation failed', err))
 
   return {
     track,
     stops,
-    ground,
+    ground: env.terrain,
+    env,
     pickables,
     ready,
     dispose: () => {
@@ -192,68 +197,31 @@ export function buildTrackWorld(scene: THREE.Scene, projects: Project[]): World 
         if (o instanceof THREE.Mesh) o.geometry.dispose()
       })
       scene.remove(root)
+      env.dispose()
     },
   }
 }
 
-/** Trees, rocks and lamp posts along the road, kept clear of every driveway. */
-async function scatterRoadside(root: THREE.Group, track: Track, stops: Stop[]) {
-  const rand = mulberry32(7)
-  const trees = await Promise.all(
-    ROADSIDE_MODELS.trees.map((m) => loadKitModel(`${m}.glb`).catch(() => null)),
-  )
-  const rocks = await Promise.all(
-    ROADSIDE_MODELS.rocks.map((m) => loadKitModel(`${m}.glb`).catch(() => null)),
-  )
+/** Lamp posts along the road, kept clear of every driveway. */
+async function placeLamps(root: THREE.Group, track: Track, stops: Stop[]) {
   const lamp = await loadKitModel(`${ROADSIDE_MODELS.lamp}.glb`).catch(() => null)
+  if (!lamp) return
   const clearOf = (u: number, side: number) =>
     stops.some(
       (s) =>
         Math.abs(((u - s.u + 1.5) % 1) - 0.5) < 0.022 && Math.sign(s.inward.dot(track.at(u).normal)) === side,
     )
-
-  const n = 140
-  for (let i = 0; i < n; i++) {
-    const u = (i + rand()) / n
-    const side = rand() > 0.5 ? 1 : -1
+  const lamps = 28
+  for (let i = 0; i < lamps; i++) {
+    const u = i / lamps
+    const side = i % 2 === 0 ? 1 : -1
     if (clearOf(u, side)) continue
     const { point, normal } = track.at(u)
-    const dist = ROAD_W / 2 + 6 + rand() * 30
-    const pos = point.clone().addScaledVector(normal, side * dist)
-    const pool = rand() > 0.35 ? trees : rocks
-    const model = pool[Math.floor(rand() * pool.length)]
-    if (!model) continue
-    const m = model.clone(true)
-    const s = (pool === trees ? 4.5 : 4) * (0.8 + rand() * 0.6)
-    m.scale.setScalar(s)
-    m.position.copy(pos)
-    m.rotation.y = rand() * Math.PI * 2
+    const m = lamp.clone(true)
+    m.scale.setScalar(11)
+    m.position.copy(point).addScaledVector(normal, side * (ROAD_W / 2 + 2.2))
+    m.rotation.y = Math.atan2(-normal.x * side, -normal.z * side)
     root.add(m)
-  }
-  if (lamp) {
-    const lamps = 24
-    for (let i = 0; i < lamps; i++) {
-      const u = i / lamps
-      const side = i % 2 === 0 ? 1 : -1
-      if (clearOf(u, side)) continue
-      const { point, normal, tangent } = track.at(u)
-      const m = lamp.clone(true)
-      m.scale.setScalar(11)
-      m.position.copy(point).addScaledVector(normal, side * (ROAD_W / 2 + 2.2))
-      m.rotation.y = Math.atan2(-normal.x * side, -normal.z * side) + (tangent.x < 0 ? 0 : 0)
-      root.add(m)
-    }
-  }
-}
-
-function mulberry32(seed: number) {
-  let a = seed >>> 0
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
 

@@ -67,7 +67,7 @@ export function City({
   const nearTitle = near ? (projects.find((p) => p.slug === near)?.title ?? null) : null
 
   return (
-    <div className="relative h-dvh w-full overflow-hidden bg-[#7cff00]">
+    <div className="relative h-dvh w-full overflow-hidden bg-[#eef3f6]">
       <div ref={host} className="absolute inset-0 [&>canvas]:size-full" />
       <CityHud
         total={projects.length}
