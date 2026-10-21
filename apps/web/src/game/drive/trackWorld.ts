@@ -4,7 +4,7 @@ import { buildEnvironment, type Environment } from './environment'
 import { buildPlace, loadKitModel } from './kits'
 import { createRoadMaterials } from './materials'
 import { PLACES, ROADSIDE_MODELS } from './places'
-import { DRIVEWAY_W, ROAD_W, SHOULDER_W, Track } from './track'
+import { ROAD_W, SHOULDER_W, Track } from './track'
 import { scatterVegetation } from './vegetation'
 
 export const COLORS = {
@@ -39,10 +39,14 @@ export type Stop = {
   /** World-space footprint for collisions, set once the models load. */
   box: THREE.Box3 | null
   sign: THREE.Sprite
+  ring: THREE.Mesh
+  halo: THREE.Mesh
 }
 
 export type World = {
   track: Track
+  /** Pulse the pads; `near` is the stop the van is parked at, if any. */
+  update: (time: number, near: Stop | null) => void
   stops: Stop[]
   /** The terrain, for raycasting taps. */
   ground: THREE.Mesh
@@ -106,26 +110,32 @@ export function buildTrackWorld(
     root.add(group)
     pickables.push(group)
 
-    // Driveway from the road edge to just past the pad.
-    const from = point.clone().addScaledVector(inward, ROAD_W / 2 - 0.5)
-    const to = point.clone().addScaledVector(inward, PAD_OFFSET + 6)
-    const length = from.distanceTo(to)
-    const drive = new THREE.Mesh(new THREE.PlaneGeometry(DRIVEWAY_W, length), roadMats.driveway)
-    drive.rotation.x = -Math.PI / 2
-    drive.rotation.z = -Math.atan2(inward.x, inward.z)
-    drive.position.copy(from).add(to).multiplyScalar(0.5).setY(0.03)
-    drive.receiveShadow = true
-    root.add(drive)
-
-    // Parking pad.
+    // Parking pad: a lit ring on the grass with a soft halo, no driveway slab.
     const planned = project.status === 'planned'
+    const padColor = planned ? COLORS.grayDark : COLORS.purple
     const ring = new THREE.Mesh(
-      new THREE.RingGeometry(3.6, 4.4, 48),
-      mat(planned ? COLORS.grayDark : COLORS.purple, 1),
+      new THREE.RingGeometry(3.7, 4.3, 64),
+      new THREE.MeshBasicMaterial({ color: padColor, transparent: true, opacity: 0.95, depthWrite: false }),
     )
     ring.rotation.x = -Math.PI / 2
-    ring.position.copy(pad).setY(0.05)
+    ring.position.copy(pad).setY(0.06)
+    ring.renderOrder = 2
     root.add(ring)
+    const halo = new THREE.Mesh(
+      new THREE.CircleGeometry(6.5, 64),
+      new THREE.MeshBasicMaterial({
+        map: haloTexture(),
+        color: padColor,
+        transparent: true,
+        opacity: planned ? 0.2 : 0.45,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    )
+    halo.rotation.x = -Math.PI / 2
+    halo.position.copy(pad).setY(0.05)
+    halo.renderOrder = 2
+    root.add(halo)
 
     // Optional water patch for harbours.
     const spec = PLACES[project.slug]
@@ -141,6 +151,8 @@ export function buildTrackWorld(
     group.add(sign)
 
     const stop: Stop = {
+      ring,
+      halo,
       slug: project.slug,
       title: project.title,
       status: project.status,
@@ -193,8 +205,19 @@ export function buildTrackWorld(
     .then(() => scatterVegetation(root, track, stops, env.heightAt))
     .catch((err) => console.error('vegetation failed', err))
 
+  const update = (time: number, near: Stop | null) => {
+    for (const s of stops) {
+      const active = s === near
+      const pulse = 1 + Math.sin(time * (active ? 5 : 2) + s.u * 40) * (active ? 0.06 : 0.03)
+      s.halo.scale.setScalar(active ? pulse * 1.25 : pulse)
+      const ringMat = s.ring.material as THREE.MeshBasicMaterial
+      ringMat.opacity = active ? 1 : 0.85 + Math.sin(time * 2 + s.u * 40) * 0.1
+    }
+  }
+
   return {
     track,
+    update,
     stops,
     ground: env.terrain,
     env,
@@ -231,6 +254,29 @@ async function placeLamps(root: THREE.Group, track: Track, stops: Stop[]) {
     m.rotation.y = Math.atan2(-normal.x * side, -normal.z * side)
     root.add(m)
   }
+}
+
+let haloTex: THREE.CanvasTexture | null = null
+/** Radial falloff for the pad halo, drawn once. */
+function haloTexture(): THREE.CanvasTexture {
+  if (haloTex) return haloTex
+  const size = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
+  // A glow that lives around the ring (peak at ~60 % radius), faint inside, gone at the edge.
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+  g.addColorStop(0, 'rgba(255,255,255,0.12)')
+  g.addColorStop(0.5, 'rgba(255,255,255,0.3)')
+  g.addColorStop(0.62, 'rgba(255,255,255,0.9)')
+  g.addColorStop(0.78, 'rgba(255,255,255,0.25)')
+  g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, size, size)
+  haloTex = new THREE.CanvasTexture(canvas)
+  haloTex.colorSpace = THREE.SRGBColorSpace
+  return haloTex
 }
 
 function makeSign(text: string, muted: boolean): THREE.Sprite {

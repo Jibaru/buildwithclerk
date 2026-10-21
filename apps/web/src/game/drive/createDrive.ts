@@ -319,6 +319,7 @@ export function createDrive(
     }
 
     world.env.update(dt, camera.position)
+    world.update(timer.getElapsed(), near)
     renderer.render(scene, camera)
   }
 
