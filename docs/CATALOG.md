@@ -4,7 +4,7 @@ Fifteen products, each led by one Clerk feature. ★ marks the v1 set. Every ent
 
 | # | District | Project | What it is | Hero Clerk feature | Stack | Status |
 |---|---|---|---|---|---|---|
-| 0 ★ | Plaza | **Build with Clerk** (`apps/web`) | The gallery and the city, with a player profile | Clerk Elements custom UI, anonymous → account, server-side achievements, user metadata | Next.js 16, Phaser 4 | v1 |
+| 0 ★ | Plaza | **Build with Clerk** (`apps/web`) | The site: drive the Clerk Van to every project, with a player profile | Custom sign-in on Clerk Core 3 hooks, anonymous → account, server-side achievements, user metadata | Next.js 16, Three.js | v1 |
 | 1 ★ | Arcade | **Last Run** | Browser roguelike. Play anonymously, die, "claim this run" with a passkey and your score enters the leaderboard. The server replays the input log before accepting a score | Passkeys, anonymous → user upgrade, backend verification | Phaser 4, Hono | v1 |
 | 2 ★ | Arcade | **Couch Code** | Jackbox-style party game for TV/desktop: the screen shows a code, you approve from your phone, your avatar appears. Players guess the output of code snippets. Go game server verifies JWTs on the WebSocket; matchmaker ↔ room servers with M2M | Device Authorization Grant, Go SDK, M2M tokens | Godot 4, Go | v1 |
 | 3 | Arcade | **Postal Chess** | Async turn-based chess. The challenge link is an invitation that creates the friend's account | Expo SDK, native Apple/Google, invitations, push to the right user | Expo | backlog |

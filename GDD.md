@@ -1,16 +1,16 @@
-# Clerk City (Build with Clerk · World mode)
+# Clerk Drive (Build with Clerk · the landing)
 
-> You are a developer arriving in Clerk City. Visit every building, try the product inside, and collect its key to unlock the whole city.
+> You drive the Clerk Van around one loop of road. Every place along the road is a product built with Clerk: park at its pad, step in, and take its key.
 
 | | |
 | --- | --- |
-| Engine | Phaser 4 (inside the Next.js 16 site at `apps/web`) |
-| Platform | web: desktop browsers with keyboard/gamepad, mobile browsers with touch |
-| View | 2D top-down, 16 px tiles rendered at ×3 (×2 on phones) |
-| Scope | weekend-prototype sized hub, not a game with difficulty: one map, one screen per building, zero extra systems |
-| References | Pokémon-style portfolio sites (walkable index), Poolsuite.net (persistent music player as identity), clerk.com (chrome, palette, motion) |
+| Engine | Three.js r186 inside the Next.js 16 site at `apps/web` (no physics engine; arcade bicycle model) |
+| Platform | web: desktop with keyboard, phones with tap-to-drive |
+| View | third-person chase camera behind the van (Crazy Taxi / GTA III style), FOV 50 widening with speed |
+| Scope | a hub, not a racing game: one loop, sixteen places, zero failure states |
+| References | the Clerk Van viewer (lime ground, soft sun, ACES), Crazy Taxi (chase cam, pick-ups), Kenney kits (toy diorama look) |
 
-The city **is** the landing page: `/` is the map, full viewport, no scroll. There is no separate gallery grid; the accessible "All projects" list in the HUD and the per-project pages at `/p/[slug]` are the non-game twins. Everything reads the project registry (`packages/registry`).
+The landing page **is** the drive: `/` is the canvas, full viewport, no scroll. "All projects" in the HUD lists every place and the van drives there by road. `/p/[slug]` is the full page and `/?at=slug` parks you at a place with its panel open. Everything reads the project registry.
 
 ## Core loop
 
@@ -25,24 +25,24 @@ Walk to a building (5–15 s). Read its door sign, press E, and a panel slides o
 
 ## Controls
 
-| Action | Keyboard | Gamepad | Touch |
-| --- | --- | --- | --- |
-| Move | WASD / arrows | left stick / d-pad | tap a tile: walk there with grid pathfinding |
-| Interact / enter building | E / Enter | A | tap the building |
-| Close panel | Esc | B | tap outside the panel / swipe down |
-| Toggle music | M | Y | HUD button |
-| Open profile (Clerk HQ) | P | start | HUD avatar |
+| Action | Keyboard | Touch |
+| --- | --- | --- |
+| Accelerate / reverse | W / S or ↑ / ↓ | tap a place or the road: the van drives there by road |
+| Steer | A / D or ← / → | automatic while driving to a tap target |
+| Brake | Space | automatic at the pad |
+| Enter the place | E / Enter at a pad | the van opens the place on arrival |
+| Close panel | Esc | tap outside / swipe down |
 
-Movement is grid-free, 8-direction, speed 96 px/s at ×1 scale (tune). Collision uses a tile layer. The camera follows with a 48×32 px deadzone (tune) and clamps to the map bounds.
+Arcade car: 9 m/s² accel, 16 m/s top speed on asphalt and 9 m/s on grass, 32° max steer with a 3.75 m wheelbase bicycle model, steering authority scaled by speed so the van never spins in place. Wheels roll and the front pivots steer using the model's `Wheel_*` and `Steer_*` nodes.
 
 ## Mechanics
 
-### Buildings and the project panel
+### Places and the project panel
 
-- Each registry entry with `city.position` becomes a building: a 48×48 or 64×64 hero sprite, a door zone of 1×1 tile in front, and a door sign showing the project title and platform icon.
-- Entering the door zone shows the interact prompt. E opens an HTML panel (not a Phaser scene) rendering the same component as `/p/[slug]`. The URL becomes `/city?at=<slug>` so the state is shareable; loading that URL spawns the player at the door and opens the panel.
-- While the panel is open the game loop pauses and keyboard focus moves to the panel.
-- Buildings for projects not yet shipped render as scaffolding with a "Coming soon" sign and cannot be entered.
+- The track is a closed Catmull-Rom loop (~700 m). Place *i* sits at arc ratio `(i+0.5)/16`, alternating left and right, 34 m from the centreline, with a 5 m driveway to a purple parking pad 15 m out. Planned projects get a gray pad and desaturated models.
+- Each place is composed from Kenney kit pieces in `apps/web/src/game/drive/places.ts` (castle with four towers for Last Run, a lighthouse on the rocks for Uptime Pages, an antenna station for Relay, a pit lane for relay CLI, a crypt behind iron fences for Vault, a harbour with a cargo ship for Exodus, a mansion for Concierge, and so on). A floating sign names it.
+- Within 7 m of a pad the HUD shows "Press E to enter". E opens the HTML panel with the project; the URL becomes `/?at=<slug>`; the van freezes while the panel is open.
+- The van cannot drive through a place: a circle-versus-box push keeps it outside each place's footprint.
 
 ### Keys
 
@@ -60,9 +60,9 @@ Movement is grid-free, 8-direction, speed 96 px/s at ×1 scale (tune). Collision
 - `audiophile` (secret): hear all six tracks for at least 30 s each.
 - Achievements and XP are stored server-side keyed by Clerk user id. Anonymous visitors accumulate in a signed cookie; creating an account migrates the cookie state.
 
-### Avatar
+### The van
 
-- First entry to the city picks one of 8 characters from `kenney:roguelike-characters`. Signed-in users store the choice in Clerk `publicMetadata.avatar`; anonymous users get a random one that follows them into the account they create.
+- `public/models/clerk_van.glb`: the Clerk Van (Ford Transit with the Clerk livery), compressed from 14 MB to 2.75 MB with meshopt and WebP. Headlights on, doors closed. Door clips exist in the model for later (open the sliding door at a pad).
 
 ## Win, fail, restart
 
@@ -86,12 +86,10 @@ There is no difficulty curve. Progression is the key count and the growing set o
 
 ## Art direction
 
-- **Style**: 16 px pixel art, Kenney packs, rendered at night. No recoloring of the packs; the Clerk identity comes from lighting.
-- **Palette**: `#131316` sky/background (gray-950) · `#230b6a` ambient tint (purple-950) · `#6c47ff` window and lamp light (purple-500) · `#00aee3` signs and water (sky-500) · `#d9d9de` text and UI hairlines (gray-200) · `#ffffff` HUD text · `#22c543` reserved for "key collected"
-- **Readability**: the player is the only sprite with a white 1 px outline. Enterable doors glow; non-enterable buildings do not. Text never sits directly on tiles, always on a translucent gray-950 plate.
-- **Resolution / camera**: tilemap 64×40 tiles (1024×640 px). Canvas fills the viewport; zoom ×3 on desktop, ×2 under 640 px wide. Pixel-perfect rendering, nearest-neighbour, no sub-pixel camera positions. Night is a multiply rectangle (`#8b82d6`) over the world plus additive radial glows: purple on lit windows and doors, warm on lamps.
-- **UI / HUD**: bottom bar, 56 px tall, gray-950 at 80 % with a 0.5 px top hairline: avatar + name (or "Guest"), keys `n/N` with a pixel key icon, XP, music play/pause with the track name in Söhne Mono uppercase, and "Exit city". Top-left: current district name on entry. Everything else is in the project panel.
-- **Map layout**: plaza in the centre with Clerk HQ; districts in a star: Arcade north, Terminal north-east, Downtown east, Market south, Broadcast west. Each district has room for 3–4 buildings. Roads are 2 tiles wide, lit by lamps every 6 tiles.
+- **Style**: toy diorama. Flat lime ground `#7cff00` (the Clerk Van viewer's background), textured asphalt loop with white edge lines and a dashed centre line, Kenney low-poly kits for every place, the detailed van as the only high-poly object.
+- **Light**: one warm sun (2.4) with 2048² shadows following the van, a sky/ground hemisphere light, a soft fill. ACES tone mapping, exposure 1. Lime fog from 160 m hides the edge of the world.
+- **Readability**: the road is the only dark surface, so it always reads. Purple appears only on pads, the HUD and the van. Signs are white-on-gray-950 sprites that always face the camera.
+- **UI / HUD**: clerk.com-style dark pills: logo top-left; All projects, GitHub, language and sign-in top-right; keys counter plus the contextual hint bottom-left; controls bottom-right. Project panel slides from the right (bottom sheet on phones).
 
 ## Audio
 
@@ -102,22 +100,14 @@ There is no difficulty curve. Progression is the key count and the growing set o
 
 | Key | Description | Source | Status |
 | --- | --- | --- | --- |
-| tiles-urban | Streets, sidewalks, grass, water, walls, doors, windows, lamps, trees | kenney:rpg-urban-pack | done |
-| tiles-city | Modern props, lamps, signs, vehicles | kenney:roguelike-modern-city | todo |
-| characters | 6 player avatars, 4 directions × 3 frames, columns 23–26 of the sheet | kenney:rpg-urban-pack | done |
-| building-hq | Clerk HQ, 64×64, lit roof variant | generate (PixelLab) or hand-drawn | todo |
-| building-lastrun | Arcade hall with neon marquee, 48×48 | generate | todo |
-| building-couchcode | Living-room facade with a giant TV, 48×48 | generate | todo |
-| building-uptime | Glass office tower with status lights, 48×64 | generate | todo |
-| building-frequency | Radio station with antenna, 48×64 | generate | todo |
-| building-relay | Terminal-green workshop with cable spools, 48×48 | generate | todo |
-| building-till | Corner shop with awning and till in the window, 48×48 | generate | todo |
-| building-scaffold | Generic "coming soon" scaffolding, 48×48 | generate or hand-drawn | todo |
-| key-pixel | The key icon, 16×16, also used by `<ClerkKey />` in demos | hand-drawn | todo |
+| clerk_van | The van, rigged pivots, 139k tris | jibaru/clerk-van (CC BY 4.0 base model) | done |
+| kits/* | 133 low-poly pieces across 18 Kenney kits, copied by `scripts/copy-kits.ts` | kenney:* (CC0) | done |
+| road texture | Asphalt with lines, drawn on a canvas at runtime | procedural | done |
+| signs | Canvas sprites per place | procedural | done |
 | music-* | Six loops, see Audio | generate (Suno) | todo |
-| sfx-* | Eleven effects, see Audio | synthesize | todo |
+| sfx-* | Engine loop, horn, pad chime, panel open/close, key | synthesize | todo |
 
-Credits land in `apps/web/public/assets/CREDITS.md` via `game-assets`.
+Credits ship in `apps/web/public/models/CREDITS.md`.
 
 ## Milestones
 
@@ -138,4 +128,5 @@ Credits land in `apps/web/public/assets/CREDITS.md` via `game-assets`.
 ## Changelog
 
 - 2026-10-19: GDD created after a three-round design interview.
+- 2026-10-21: rebuilt in 3D as Clerk Drive: the Clerk Van on a single road loop with one detailed Kenney-kit place per project, chase camera, tap-to-drive autopilot. The Phaser city and the tile map are gone.
 - 2026-10-19: the city became the landing page itself (no gallery grid). Map generated procedurally from the registry (`apps/web/src/game/citymap.ts`): plaza + fountain, six 2-tile roads, pavement, BFS-paved paths to every door, lamps and trees. Buildings are 3×3 wall sets from kenney:rpg-urban-pack with a door and three windows; planned projects render gray. Player avatars come from the same pack (6 characters, 4 directions, 3 frames). M1 and M3 merged accordingly.

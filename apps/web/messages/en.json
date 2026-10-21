@@ -18,7 +18,7 @@
     "subheadline": "A gallery of complete apps built with Clerk: games, B2B, points of sale, media, CLIs and plugins. Each one leads with one Clerk feature, runs live, and is yours to clone.",
     "browse": "Browse projects",
     "enterCity": "Enter the city",
-    "cityHint": "Walk a pixel city where every building is a project. Collect keys from live demos."
+    "cityHint": "Drive the Clerk Van around the loop. Every place is a project; every live demo hands you a key."
   },
   "gallery": {
     "title": "Projects",
@@ -102,7 +102,7 @@
   "cityBand": {
     "eyebrow": "Clerk City",
     "title": "Every project is a building. Every live demo hands you a key.",
-    "body": "Walk the pixel city, step into a project, try its demo, and bring the key back. Collect them all and the city is yours.",
+    "body": "Drive to a place, step in, try its demo, and bring the key back. Collect them all and the road is yours.",
     "cta": "Enter the city",
     "secondary": "Create your player"
   },
@@ -110,11 +110,11 @@
     "index": "All projects",
     "close": "Close",
     "signIn": "Sign in",
-    "loading": "Loading the city…",
-    "hint": "Walk up to a building and press E",
+    "loading": "Loading the van… {percent}%",
+    "hint": "Drive to a place and press E",
     "near": "Press E to enter {title}",
-    "controls": "WASD / arrows · E enter · Esc close · tap to walk",
+    "controls": "WASD / arrows drive · space brake · E enter · Esc close · tap to drive there",
     "fullPage": "Full page",
-    "indexHint": "Pick a project to walk to its door. Language: {locale}"
+    "indexHint": "Pick a project and the van drives there. Language: {locale}"
   }
 }

@@ -14,17 +14,17 @@ export const projects: Project[] = [
     number: 0,
     title: 'Build with Clerk',
     tagline: {
-      en: 'The gallery and the city. A player profile that starts anonymous.',
-      es: 'La galería y la ciudad. Un perfil de jugador que empieza anónimo.',
+      en: 'The site itself. A player profile that starts anonymous.',
+      es: 'El sitio mismo. Un perfil de jugador que empieza anónimo.',
     },
     description: {
-      en: 'This site. Browse projects, walk the pixel city, collect keys from live demos. Sign-in is a custom UI built with Clerk Elements; progress starts in a signed cookie and migrates into your account when you create one.',
-      es: 'Este sitio. Explora proyectos, camina por la ciudad pixel, recoge llaves en las demos. El sign-in es una UI custom con Clerk Elements; el progreso empieza en una cookie firmada y migra a tu cuenta cuando la creas.',
+      en: 'This site. Drive the Clerk Van to every project, collect keys from live demos. Sign-in is a custom UI on Clerk\u2019s Core 3 hooks; progress starts in a signed cookie and migrates into your account when you create one.',
+      es: 'Este sitio. Conduce la Clerk Van hasta cada proyecto y recoge llaves en las demos. El sign-in es una UI custom sobre los hooks de Clerk Core 3; el progreso empieza en una cookie firmada y migra a tu cuenta cuando la creas.',
     },
     status: 'building',
     milestone: 'M1',
     platforms: ['web'],
-    stack: ['Next.js 16', 'Phaser 4', 'Tailwind v4', 'next-intl'],
+    stack: ['Next.js 16', 'Three.js', 'Tailwind v4', 'next-intl'],
     heroFeature: 'custom-ui-elements',
     features: [
       feature('custom-ui-elements'),

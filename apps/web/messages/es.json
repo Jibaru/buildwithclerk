@@ -18,7 +18,7 @@
     "subheadline": "Una galería de apps completas construidas con Clerk: juegos, B2B, puntos de venta, media, CLIs y plugins. Cada una gira alrededor de una feature de Clerk, corre en vivo y es tuya para clonar.",
     "browse": "Ver proyectos",
     "enterCity": "Entrar a la ciudad",
-    "cityHint": "Camina por una ciudad pixel donde cada edificio es un proyecto. Recoge llaves en las demos en vivo."
+    "cityHint": "Conduce la Clerk Van por el circuito. Cada lugar es un proyecto; cada demo en vivo te entrega una llave."
   },
   "gallery": {
     "title": "Proyectos",
@@ -102,7 +102,7 @@
   "cityBand": {
     "eyebrow": "Clerk City",
     "title": "Cada proyecto es un edificio. Cada demo en vivo te entrega una llave.",
-    "body": "Camina por la ciudad pixel, entra a un proyecto, prueba su demo y trae la llave de vuelta. Reúnelas todas y la ciudad es tuya.",
+    "body": "Conduce hasta un lugar, entra, prueba su demo y trae la llave de vuelta. Reúnelas todas y la carretera es tuya.",
     "cta": "Entrar a la ciudad",
     "secondary": "Crea tu jugador"
   },
@@ -110,11 +110,11 @@
     "index": "Todos los proyectos",
     "close": "Cerrar",
     "signIn": "Iniciar sesión",
-    "loading": "Cargando la ciudad…",
-    "hint": "Acércate a un edificio y pulsa E",
+    "loading": "Cargando la van… {percent}%",
+    "hint": "Conduce hasta un lugar y pulsa E",
     "near": "Pulsa E para entrar a {title}",
-    "controls": "WASD / flechas · E entrar · Esc cerrar · toca para caminar",
+    "controls": "WASD / flechas conducir · espacio frenar · E entrar · Esc cerrar · toca para ir",
     "fullPage": "Página completa",
-    "indexHint": "Elige un proyecto para caminar hasta su puerta. Idioma: {locale}"
+    "indexHint": "Elige un proyecto y la van conduce hasta allí. Idioma: {locale}"
   }
 }

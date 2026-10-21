@@ -1,15 +1,15 @@
 # Build with Clerk
 
-A gallery of real products built with [Clerk](https://clerk.com), each one a complete, clonable example that leads with a single Clerk feature. The gallery itself is a small game: an explorable pixel-art city where every building is a project and every live demo hands you a key.
+A gallery of real products built with [Clerk](https://clerk.com), each one a complete, clonable example that leads with a single Clerk feature. The gallery itself is a small game: you drive the Clerk Van around a 3D loop where every place is a project and every live demo hands you a key.
 
 **Site:** https://buildwithclerk.com (soon)
 
 ## What lives here
 
 ```
-apps/web            The gallery site and the city (Next.js 16, Phaser 4)
+apps/web            The site and the drive (Next.js 16, Three.js)
 examples/<slug>     One self-contained product per folder, clonable on its own
-packages/registry   Typed metadata for every project; feeds the gallery and the city
+packages/registry   Typed metadata for every project; feeds the drive and the pages
 packages/ui         Shared design tokens (Clerk's palette, type scale, motion)
 docs/               Plan, catalog, design notes
 ```

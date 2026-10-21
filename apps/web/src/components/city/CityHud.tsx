@@ -14,12 +14,14 @@ const pill =
 export function CityHud({
   total,
   ready,
+  progress,
   nearTitle,
   indexOpen,
   onToggleIndex,
 }: {
   total: number
   ready: boolean
+  progress: number
   nearTitle: string | null
   indexOpen: boolean
   onToggleIndex: () => void
@@ -82,7 +84,11 @@ export function CityHud({
             <span>0 / {total}</span>
           </span>
           <span className="text-xs text-gray-400">
-            {ready ? (nearTitle ? t('near', { title: nearTitle }) : t('hint')) : t('loading')}
+            {ready
+              ? nearTitle
+                ? t('near', { title: nearTitle })
+                : t('hint')
+              : t('loading', { percent: Math.round(progress * 100) })}
           </span>
         </div>
         <div className={cn(pill, 'hidden sm:flex')}>

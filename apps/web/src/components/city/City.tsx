@@ -2,12 +2,10 @@
 
 import type { Locale, Project } from '@buildwithclerk/registry'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { GameHandle } from '@/game/createGame'
+import type { DriveHandle } from '@/game/drive/createDrive'
 import { CityHud } from './CityHud'
 import { CityIndex } from './CityIndex'
 import { ProjectPanel } from './ProjectPanel'
-
-const AVATARS = [23, 104, 185, 266, 347, 428]
 
 export function City({
   projects,
@@ -19,8 +17,9 @@ export function City({
   initialSlug: string | null
 }) {
   const host = useRef<HTMLDivElement>(null)
-  const game = useRef<GameHandle | null>(null)
+  const game = useRef<DriveHandle | null>(null)
   const [ready, setReady] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [near, setNear] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(initialSlug)
   const [indexOpen, setIndexOpen] = useState(false)
@@ -29,15 +28,14 @@ export function City({
   const mountArgs = useRef({ projects, initialSlug })
 
   useEffect(() => {
-    let handle: GameHandle | null = null
+    let handle: DriveHandle | null = null
     let cancelled = false
-    const avatar = AVATARS[Math.floor(Math.random() * AVATARS.length)] as number
     const { projects: initialProjects, initialSlug: startAt } = mountArgs.current
-    import('@/game/createGame').then(({ createGame }) => {
+    import('@/game/drive/createDrive').then(({ createDrive }) => {
       if (cancelled || !host.current) return
-      handle = createGame(host.current, initialProjects, {
-        avatar,
+      handle = createDrive(host.current, initialProjects, {
         startAt,
+        onProgress: setProgress,
         onReady: () => setReady(true),
         onNear: setNear,
         onEnter: (slug) => setOpen(slug),
@@ -62,18 +60,19 @@ export function City({
   const close = useCallback(() => setOpen(null), [])
   const pick = useCallback((slug: string) => {
     setIndexOpen(false)
-    game.current?.goTo(slug)
+    game.current?.driveTo(slug)
   }, [])
 
   const project = open ? (projects.find((p) => p.slug === open) ?? null) : null
   const nearTitle = near ? (projects.find((p) => p.slug === near)?.title ?? null) : null
 
   return (
-    <div className="relative h-dvh w-full overflow-hidden bg-gray-950">
-      <div ref={host} className="absolute inset-0 [&>canvas]:block" />
+    <div className="relative h-dvh w-full overflow-hidden bg-[#7cff00]">
+      <div ref={host} className="absolute inset-0 [&>canvas]:size-full" />
       <CityHud
         total={projects.length}
         ready={ready}
+        progress={progress}
         nearTitle={nearTitle}
         indexOpen={indexOpen}
         onToggleIndex={() => setIndexOpen((v) => !v)}
