@@ -1,5 +1,3 @@
-import { VEGETATION_MODELS } from './vegetation'
-
 /**
  * One composed place per project, built from Kenney CC0 kits. Coordinates are metres in the
  * place's local frame: +z faces the road, +x is to the right when looking from the road.
@@ -406,6 +404,5 @@ export function allModels(): string[] {
   const set = new Set<string>()
   for (const place of Object.values(PLACES)) for (const piece of place.pieces) set.add(piece.m)
   for (const m of [...ROADSIDE_MODELS.trees, ...ROADSIDE_MODELS.rocks, ROADSIDE_MODELS.lamp]) set.add(m)
-  for (const m of VEGETATION_MODELS) set.add(m)
   return [...set].sort()
 }

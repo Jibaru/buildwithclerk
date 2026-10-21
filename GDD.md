@@ -86,9 +86,10 @@ There is no difficulty curve. Progression is the key count and the growing set o
 
 ## Art direction
 
-- **Style**: toy diorama. Flat lime ground `#7cff00` (the Clerk Van viewer's background), textured asphalt loop with white edge lines and a dashed centre line, Kenney low-poly kits for every place, the detailed van as the only high-poly object.
-- **Light**: one warm sun (2.4) with 2048² shadows following the van, a sky/ground hemisphere light, a soft fill. ACES tone mapping, exposure 1. Lime fog from 160 m hides the edge of the world.
-- **Readability**: the road is the only dark surface, so it always reads. Purple appears only on pads, the HUD and the van. Signs are white-on-gray-950 sprites that always face the camera.
+- **Style**: photoreal-leaning diorama. The real backdrop is the `alps_field` HDRI from Poly Haven, used both as the sky and as image-based lighting, so the van's paint and glass reflect a real sky and the mountains on the horizon are photographic. In front of it, procedural foothills with a PBR splat terrain (ambientCG Grass005, Ground037 dirt, Rock051 by slope and height, a worn dirt strip along the shoulder), a Poly Haven `asphalt_02` road with painted markings, gravel shoulders and driveways.
+- **Vegetation**: ~900 procedural trees from ez-tree (oak, ash, aspen, pine, bushes; instanced per variant with wind sway), 90k GPU grass blades within 45 m of the road, ~1,500 photoscanned ferns, grass clumps, dandelions and wildflowers from Poly Haven in the belt, ~300 photoscanned rocks and boulders on slopes, young firs and dead trunks. Everything instanced; the whole landscape is ~40 draw calls.
+- **Light**: the sun direction is read from the brightest texel of the HDRI; one warm directional light (2.0) with 2048² shadows following the van, a soft hemisphere fill (0.55), environment intensity 0.9. ACES tone mapping. Fog `#bfcdd9` from 250 m so the terrain melts into the haze.
+- **Places** still come from Kenney kits (stylised); the van and the landscape are the realistic layer. Swapping places for realistic kits is a later pass.
 - **UI / HUD**: clerk.com-style dark pills: logo top-left; All projects, GitHub, language and sign-in top-right; keys counter plus the contextual hint bottom-left; controls bottom-right. Project panel slides from the right (bottom sheet on phones).
 
 ## Audio
@@ -101,7 +102,10 @@ There is no difficulty curve. Progression is the key count and the growing set o
 | Key | Description | Source | Status |
 | --- | --- | --- | --- |
 | clerk_van | The van, rigged pivots, 139k tris | jibaru/clerk-van (CC BY 4.0 base model) | done |
-| kits/* | 133 low-poly pieces across 18 Kenney kits, copied by `scripts/copy-kits.ts` | kenney:* (CC0) | done |
+| kits/* | 133 low-poly pieces across 18 Kenney kits for the places, copied by `scripts/copy-kits.ts` | kenney:* (CC0) | done |
+| textures/* | alps_field 2k HDRI; asphalt_02; Grass005, Ground037, Rock051, Gravel023 at 512 px | polyhaven:*, ambientcg:* (CC0) | done |
+| real/* | 16 decimated Poly Haven photoscans (plants, rocks, trunk, sapling) | polyhaven:* (CC0) | done |
+| trees | ez-tree procedural variants generated at startup | @dgreenheck/ez-tree (MIT) | done |
 | road texture | Asphalt with lines, drawn on a canvas at runtime | procedural | done |
 | signs | Canvas sprites per place | procedural | done |
 | music-* | Six loops, see Audio | generate (Suno) | todo |
@@ -128,5 +132,6 @@ Credits ship in `apps/web/public/models/CREDITS.md`.
 ## Changelog
 
 - 2026-10-19: GDD created after a three-round design interview.
+- 2026-10-21 (later): realistic landscape: HDRI sky and IBL, PBR splat terrain, PBR road, ez-tree forests, GPU grass, Poly Haven photoscans. Built by two parallel agents (environment, vegetation) and integrated.
 - 2026-10-21: rebuilt in 3D as Clerk Drive: the Clerk Van on a single road loop with one detailed Kenney-kit place per project, chase camera, tap-to-drive autopilot. The Phaser city and the tile map are gone.
 - 2026-10-19: the city became the landing page itself (no gallery grid). Map generated procedurally from the registry (`apps/web/src/game/citymap.ts`): plaza + fountain, six 2-tile roads, pavement, BFS-paved paths to every door, lamps and trees. Buildings are 3×3 wall sets from kenney:rpg-urban-pack with a door and three windows; planned projects render gray. Player avatars come from the same pack (6 characters, 4 directions, 3 frames). M1 and M3 merged accordingly.

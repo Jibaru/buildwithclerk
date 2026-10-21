@@ -48,8 +48,8 @@ export function createDrive(
 
   const camera = new THREE.PerspectiveCamera(50, 1, 0.5, 600)
 
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xb8ff66, 0.9))
-  const sun = new THREE.DirectionalLight(0xffffff, 2.4)
+  scene.add(new THREE.HemisphereLight(0xdfe9f3, 0x5f7a3a, 0.55))
+  const sun = new THREE.DirectionalLight(0xfff3e0, 2.0)
   sun.castShadow = true
   sun.shadow.mapSize.set(2048, 2048)
   const sc = sun.shadow.camera
@@ -62,11 +62,9 @@ export function createDrive(
   sun.shadow.bias = -0.0006
   sun.shadow.normalBias = 0.04
   scene.add(sun, sun.target)
-  const fill = new THREE.DirectionalLight(0xffffff, 0.8)
-  fill.position.set(-30, 20, -20)
-  scene.add(fill)
-
-  const world = buildTrackWorld(scene, projects)
+  const world = buildTrackWorld(scene, renderer, projects)
+  if (process.env.NODE_ENV !== 'production')
+    (window as unknown as { __bwcScene?: THREE.Scene }).__bwcScene = scene
   const { track } = world
 
   // State.
@@ -316,7 +314,7 @@ export function createDrive(
       camera.fov = THREE.MathUtils.damp(camera.fov, targetFov, 4, dt)
       camera.updateProjectionMatrix()
 
-      sun.position.set(van.position.x + 50, 90, van.position.z + 40)
+      sun.position.copy(van.position).addScaledVector(world.env.sunDirection, 130)
       sun.target.position.set(van.position.x, 0, van.position.z)
     }
 
@@ -348,6 +346,11 @@ export function createDrive(
       camera.position.copy(spawn).addScaledVector(tmp, -14).setY(7)
       if (events.startAt) goTo(events.startAt, false)
       return world.ready
+    })
+    .then(() => world.env.ready)
+    .then(() => {
+      // The HDRI horizon sample lands on dark mountains; terrain should fade into the haze instead.
+      if (scene.fog) scene.fog.color.set(0xbfcdd9)
     })
     .catch((err) => console.error('Clerk Van failed to load', err))
     .finally(() => {

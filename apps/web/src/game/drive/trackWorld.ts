@@ -2,8 +2,9 @@ import type { Project } from '@buildwithclerk/registry'
 import * as THREE from 'three'
 import { buildEnvironment, type Environment } from './environment'
 import { buildPlace, loadKitModel } from './kits'
+import { createRoadMaterials } from './materials'
 import { PLACES, ROADSIDE_MODELS } from './places'
-import { DRIVEWAY_W, makeRoadTexture, ROAD_W, SHOULDER_W, Track } from './track'
+import { DRIVEWAY_W, ROAD_W, SHOULDER_W, Track } from './track'
 import { scatterVegetation } from './vegetation'
 
 export const COLORS = {
@@ -56,23 +57,30 @@ function mat(color: number, roughness = 0.95): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, roughness, metalness: 0 })
 }
 
-export function buildTrackWorld(scene: THREE.Scene, projects: Project[]): World {
+export function buildTrackWorld(
+  scene: THREE.Scene,
+  renderer: THREE.WebGLRenderer,
+  projects: Project[],
+): World {
   const track = new Track()
   const root = new THREE.Group()
   root.name = 'world'
   scene.add(root)
 
   // Terrain, sky, clouds and fog. Flat within FLAT_RADIUS of the road, hills and mountains beyond.
-  const env = buildEnvironment(scene, track)
+  const env = buildEnvironment(scene, track, renderer)
+  const roadMats = createRoadMaterials()
 
-  // Road: a pale shoulder under a textured asphalt ribbon.
-  const shoulder = new THREE.Mesh(track.buildRibbon(ROAD_W + SHOULDER_W * 2, 0.02), mat(COLORS.pavement, 1))
+  // Road: gravel shoulder under PBR asphalt, painted markings floating just above.
+  const shoulder = new THREE.Mesh(track.buildRibbon(ROAD_W + SHOULDER_W * 2, 0.02), roadMats.shoulder)
   shoulder.receiveShadow = true
   root.add(shoulder)
-  const roadMat = new THREE.MeshStandardMaterial({ map: makeRoadTexture(), roughness: 0.95, metalness: 0 })
-  const road = new THREE.Mesh(track.buildRibbon(ROAD_W, 0.04), roadMat)
+  const road = new THREE.Mesh(track.buildRibbon(ROAD_W, 0.04), roadMats.asphalt)
   road.receiveShadow = true
   root.add(road)
+  const markings = new THREE.Mesh(track.buildRibbon(ROAD_W, 0.05), roadMats.markings)
+  markings.renderOrder = 1
+  root.add(markings)
 
   // Places, one per project, alternating sides of the road.
   const stops: Stop[] = []
@@ -102,7 +110,7 @@ export function buildTrackWorld(scene: THREE.Scene, projects: Project[]): World 
     const from = point.clone().addScaledVector(inward, ROAD_W / 2 - 0.5)
     const to = point.clone().addScaledVector(inward, PAD_OFFSET + 6)
     const length = from.distanceTo(to)
-    const drive = new THREE.Mesh(new THREE.PlaneGeometry(DRIVEWAY_W, length), mat(COLORS.driveway, 1))
+    const drive = new THREE.Mesh(new THREE.PlaneGeometry(DRIVEWAY_W, length), roadMats.driveway)
     drive.rotation.x = -Math.PI / 2
     drive.rotation.z = -Math.atan2(inward.x, inward.z)
     drive.position.copy(from).add(to).multiplyScalar(0.5).setY(0.03)

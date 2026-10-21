@@ -1,132 +1,62 @@
+import { Tree, TreePreset } from '@dgreenheck/ez-tree'
 import * as THREE from 'three'
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
-import { loadKitModel } from './kits'
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { ROAD_W, type Track } from './track'
 import type { Stop } from './trackWorld'
 
 /**
- * Dense, deterministic vegetation for the landscape around the loop. Every model becomes one
- * InstancedMesh per sub-mesh, so thousands of trees cost a few dozen draw calls.
+ * Realistic vegetation for the landscape around the loop:
+ * - trees generated procedurally with ez-tree (bark PBR + leaf cards), ten variants instanced
+ * - photoscanned plants and rocks from Poly Haven (decimated, meshopt + WebP) instanced
+ * - GPU grass: tens of thousands of swaying blades near the road
+ * Everything is deterministic (seeded) and placed on the terrain through `heightAt`.
  */
 
-const N = 'nature-kit'
-const kit = (m: string) => `${N}/${m}`
+const REAL_URL = '/models/real'
 
-const TREES = [
-  'tree_default',
-  'tree_oak',
-  'tree_detailed',
-  'tree_fat',
-  'tree_tall',
-  'tree_thin',
-  'tree_simple',
-  'tree_cone',
-  'tree_plateau',
-  'tree_small',
-  'tree_blocks',
-  'tree_default_fall',
-  'tree_oak_fall',
-  'tree_detailed_fall',
-].map(kit)
+const PLANT_MODELS = {
+  fern: 'real/fern_02',
+  grassA: 'real/grass_medium_01',
+  grassB: 'real/grass_medium_02',
+  bermuda: 'real/grass_bermuda_01',
+  dandelion: 'real/dandelion_01',
+  nettle: 'real/nettle_plant',
+  heliophila: 'real/flower_heliophila',
+} as const
 
-const PINES = [
-  'tree_pineTallA_detailed',
-  'tree_pineTallB_detailed',
-  'tree_pineTallC_detailed',
-  'tree_pineRoundA',
-  'tree_pineRoundC',
-  'tree_pineDefaultA',
-  'tree_pineDefaultB',
-  'tree_pineGroundA',
-  'tree_pineSmallA',
-].map(kit)
+const ROCK_MODELS = {
+  rock07: 'real/rock_07',
+  rock09: 'real/rock_09',
+  stone: 'real/stone_01',
+  boulder: 'real/boulder_01',
+  nama02: 'real/namaqualand_boulder_02',
+  nama04: 'real/namaqualand_boulder_04',
+  nama06: 'real/namaqualand_boulder_06',
+} as const
 
-const GRASS = [
-  'grass',
-  'grass_large',
-  'grass_leafs',
-  'grass_leafsLarge',
-  'plant_flatShort',
-  'plant_flatTall',
-].map(kit)
-const FLOWERS = [
-  'flower_redA',
-  'flower_redB',
-  'flower_yellowA',
-  'flower_yellowB',
-  'flower_purpleA',
-  'flower_purpleB',
-  'flower_purpleC',
-  'flower_yellowC',
-].map(kit)
-const BUSHES = [
-  'plant_bush',
-  'plant_bushLarge',
-  'plant_bushDetailed',
-  'plant_bushSmall',
-  'plant_bushTriangle',
-  'plant_bushLargeTriangle',
-].map(kit)
-const ROCKS = [
-  'rock_largeA',
-  'rock_largeB',
-  'rock_largeC',
-  'rock_largeD',
-  'rock_tallA',
-  'rock_tallB',
-  'rock_tallC',
-  'rock_tallD',
-  'rock_tallE',
-].map(kit)
-const PEBBLES = [
-  'rock_smallA',
-  'rock_smallB',
-  'rock_smallC',
-  'rock_smallD',
-  'rock_smallE',
-  'stone_smallA',
-  'stone_smallB',
-  'stone_smallTopA',
-].map(kit)
-const STONES = [
-  'stone_largeA',
-  'stone_largeB',
-  'stone_largeC',
-  'stone_tallA',
-  'stone_tallB',
-  'stone_tallD',
-].map(kit)
-const DEBRIS = [
-  'stump_old',
-  'stump_round',
-  'stump_roundDetailed',
-  'stump_square',
-  'log',
-  'log_large',
-  'log_stack',
-  'mushroom_red',
-  'mushroom_redGroup',
-  'mushroom_tan',
-  'mushroom_tanGroup',
-].map(kit)
+const OTHER_MODELS = {
+  trunk: 'real/dead_tree_trunk',
+  fir: 'real/fir_sapling',
+} as const
 
+/** Every photoscan the module may load, as `real/<name>` references. */
 export const VEGETATION_MODELS: string[] = [
-  ...TREES,
-  ...PINES,
-  ...GRASS,
-  ...FLOWERS,
-  ...BUSHES,
-  ...ROCKS,
-  ...PEBBLES,
-  ...STONES,
-  ...DEBRIS,
+  ...Object.values(PLANT_MODELS),
+  ...Object.values(ROCK_MODELS),
+  ...Object.values(OTHER_MODELS),
 ]
 
 /** Sampling area around the track, in metres. */
 const EXTENT = 650
 const PLACE_CLEAR = 46
+const PLACE_CLEAR_SMALL = 28
 const DRIVEWAY_CLEAR = 6
 const ROAD_CLEAR = ROAD_W / 2 + 3
+const MAX_HEIGHT = 70
+
+// ---------------------------------------------------------------------------------------------
+// Utilities
 
 function mulberry32(seed: number) {
   let a = seed >>> 0
@@ -139,17 +69,6 @@ function mulberry32(seed: number) {
   }
 }
 
-export type Category = { models: string[]; matrices: THREE.Matrix4[][]; shadow: boolean }
-
-function category(models: string[], shadow: boolean): Category {
-  return { models, matrices: models.map(() => []), shadow }
-}
-
-function pick<T>(list: T[], rand: () => number): { item: T; index: number } {
-  const index = Math.min(list.length - 1, Math.floor(rand() * list.length))
-  return { item: list[index] as T, index }
-}
-
 /** Point-to-segment distance in XZ. */
 function segmentDistance(px: number, pz: number, ax: number, az: number, bx: number, bz: number) {
   const abx = bx - ax
@@ -160,8 +79,8 @@ function segmentDistance(px: number, pz: number, ax: number, az: number, bx: num
 }
 
 /**
- * Coarse grid of "distance to road centreline" so 20k+ samples do not each walk 600 points.
- * Cells are 8 m; the lookup takes the min over the cell's own stored distance (computed once).
+ * Coarse grid of "distance to road centreline" so tens of thousands of samples do not each
+ * walk the track's 600 points. Cells are 8 m, bilinear read, exact check only near the road.
  */
 class RoadDistanceGrid {
   private readonly cell = 8
@@ -186,7 +105,6 @@ class RoadDistanceGrid {
     }
   }
 
-  /** Bilinear read; good enough for a 3 m clearance band once combined with the exact check. */
   at(x: number, z: number): number {
     const fx = (x - this.minX) / this.cell
     const fz = (z - this.minZ) / this.cell
@@ -202,174 +120,489 @@ class RoadDistanceGrid {
   }
 }
 
-export type VegetationPlan = Record<
-  'trees' | 'pines' | 'grass' | 'flowers' | 'bushes' | 'rocks' | 'pebbles' | 'stones' | 'debris',
-  Category
->
+// ---------------------------------------------------------------------------------------------
+// Loading photoscans
 
-/** Decides where everything goes. Pure and deterministic; no models are loaded. */
-export function planVegetation(
+const loader = new GLTFLoader()
+loader.setMeshoptDecoder(MeshoptDecoder)
+const cache = new Map<string, Promise<THREE.Group | null>>()
+
+function loadReal(ref: string, foliage = false): Promise<THREE.Group | null> {
+  const key = `${ref}|${foliage ? 'f' : 's'}`
+  let p = cache.get(key)
+  if (!p) {
+    const name = ref.replace(/^real\//, '')
+    p = new Promise<THREE.Group | null>((resolve) => {
+      loader.load(
+        `${REAL_URL}/${name}.glb`,
+        (gltf) => {
+          gltf.scene.traverse((o) => {
+            if (!(o instanceof THREE.Mesh)) return
+            const mats = Array.isArray(o.material) ? o.material : [o.material]
+            for (const m of mats) {
+              if (!(m instanceof THREE.MeshStandardMaterial)) continue
+              // Foliage and cut-outs: hard alpha so instances never need sorting. Some scans
+              // (grass_bermuda) ship alpha in the texture but an opaque material, so every
+              // plant material is cut, not only the ones flagged.
+              if (foliage || m.transparent || m.alphaTest > 0 || m.alphaMap) {
+                m.alphaTest = 0.5
+                m.transparent = false
+                m.depthWrite = true
+                m.side = THREE.DoubleSide
+                // Photoscanned foliage has a dark albedo; lift it with its own texture as a
+                // faint emissive so it reads under a low sun (cheap stand-in for translucency).
+                m.envMapIntensity = 1.2
+                m.emissive.set(0xffffff)
+                m.emissiveMap = m.map
+                m.emissiveIntensity = 0.8
+              } else {
+                m.envMapIntensity = 0.8
+              }
+              m.needsUpdate = true
+            }
+          })
+          resolve(gltf.scene)
+        },
+        undefined,
+        () => {
+          console.warn(`vegetation: skipped missing model ${ref}`)
+          resolve(null)
+        },
+      )
+    })
+    cache.set(key, p)
+  }
+  return p
+}
+
+/** One InstancedMesh per Mesh inside the group, keeping each child's offset and material. */
+function instanceGroup(
+  root: THREE.Group,
+  group: THREE.Group,
+  matrices: THREE.Matrix4[],
+  castShadow: boolean,
+): number {
+  group.updateMatrixWorld(true)
+  let drawCalls = 0
+  const tmp = new THREE.Matrix4()
+  group.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return
+    const mesh = new THREE.InstancedMesh(child.geometry, child.material, matrices.length)
+    const local = child.matrixWorld
+    for (let i = 0; i < matrices.length; i++) {
+      const m = matrices[i]
+      if (!m) continue
+      tmp.multiplyMatrices(m, local)
+      mesh.setMatrixAt(i, tmp)
+    }
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.castShadow = castShadow
+    // Thin double-sided foliage self-shadows into black under the sun's map, so only solid
+    // pieces (the ones that cast) receive shadows.
+    mesh.receiveShadow = castShadow
+    mesh.frustumCulled = false
+    root.add(mesh)
+    drawCalls++
+  })
+  return drawCalls
+}
+
+// ---------------------------------------------------------------------------------------------
+// Trees (ez-tree)
+
+type TreeKind = 'broadleaf' | 'pine' | 'bush'
+type TreeVariant = {
+  kind: TreeKind
+  branches: THREE.BufferGeometry
+  leaves: THREE.BufferGeometry
+  bark: THREE.MeshStandardMaterial
+  leaf: THREE.MeshStandardMaterial
+  /** Scale that turns the tree's own units into the target height in metres. */
+  scale: number
+}
+
+const TREE_VARIANTS: Array<{
+  preset: keyof typeof TreePreset
+  kind: TreeKind
+  height: number
+  seed: number
+}> = [
+  { preset: 'Oak Medium', kind: 'broadleaf', height: 13, seed: 101 },
+  { preset: 'Oak Large', kind: 'broadleaf', height: 16, seed: 202 },
+  { preset: 'Ash Medium', kind: 'broadleaf', height: 14, seed: 303 },
+  { preset: 'Ash Large', kind: 'broadleaf', height: 17, seed: 404 },
+  { preset: 'Aspen Medium', kind: 'broadleaf', height: 11, seed: 505 },
+  { preset: 'Aspen Large', kind: 'broadleaf', height: 14, seed: 606 },
+  { preset: 'Pine Medium', kind: 'pine', height: 16, seed: 707 },
+  { preset: 'Pine Large', kind: 'pine', height: 21, seed: 808 },
+  { preset: 'Bush 1', kind: 'bush', height: 2.4, seed: 909 },
+  { preset: 'Bush 2', kind: 'bush', height: 2.8, seed: 1010 },
+]
+
+const MAX_TREE_TRIS = 9000
+
+const windStart = performance.now()
+type WindShader = { uniforms: { uTime: { value: number } } }
+
+/** Local-space sway injected before instancing, so it works for InstancedMesh. */
+function attachWind(material: THREE.MeshStandardMaterial, strength: number) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = { value: 0 }
+    shader.uniforms.uWind = { value: strength }
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform float uWind;')
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        {
+          #ifdef USE_INSTANCING
+            vec3 wp = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
+          #else
+            vec3 wp = vec3(0.0);
+          #endif
+          float phase = wp.x * 0.13 + wp.z * 0.17;
+          float h = clamp(transformed.y / 12.0, 0.0, 1.0);
+          float sway = uWind * h * (0.6 * sin(uTime * 0.9 + phase) + 0.3 * sin(uTime * 2.1 + phase * 1.7) + 0.1 * sin(uTime * 4.3 + phase * 2.3));
+          transformed.x += sway;
+          transformed.z += sway * 0.5;
+        }`,
+      )
+    material.userData.shader = shader
+  }
+  material.onBeforeRender = () => {
+    const shader = material.userData.shader as WindShader | undefined
+    if (shader) shader.uniforms.uTime.value = (performance.now() - windStart) / 1000
+  }
+}
+
+/** Generates the tree variants once. Adaptive: trims leaves and twigs until a tree fits the budget. */
+function buildTreeVariants(): TreeVariant[] {
+  const t0 = performance.now()
+  const variants: TreeVariant[] = []
+  for (const v of TREE_VARIANTS) {
+    const tree = new Tree()
+    tree.options.copy(TreePreset[v.preset] as typeof tree.options)
+    tree.options.seed = v.seed
+    let tris = Number.POSITIVE_INFINITY
+    for (let attempt = 0; attempt < 4 && tris > MAX_TREE_TRIS; attempt++) {
+      if (attempt > 0) {
+        tree.options.leaves.count = Math.max(4, Math.floor(tree.options.leaves.count * 0.6))
+        tree.options.branch.children[2] = Math.max(1, Math.floor(tree.options.branch.children[2] * 0.7))
+      }
+      tree.generate()
+      const bi = tree.branchesMesh.geometry.index
+      const li = tree.leavesMesh.geometry.index
+      tris = ((bi ? bi.count : 0) + (li ? li.count : 0)) / 3
+    }
+    const branches = tree.branchesMesh.geometry
+    const leaves = tree.leavesMesh.geometry
+    branches.computeBoundingBox()
+    leaves.computeBoundingBox()
+    const top = Math.max(branches.boundingBox?.max.y ?? 1, leaves.boundingBox?.max.y ?? 1)
+    const scale = v.height / Math.max(top, 1)
+
+    const phongBark = tree.branchesMesh.material as THREE.MeshPhongMaterial
+    const bark = new THREE.MeshStandardMaterial({
+      map: phongBark.map,
+      normalMap: phongBark.normalMap,
+      roughnessMap: (phongBark as unknown as { roughnessMap?: THREE.Texture }).roughnessMap ?? null,
+      aoMap: phongBark.aoMap,
+      color: phongBark.color,
+      roughness: 0.95,
+      metalness: 0,
+      envMapIntensity: 0.4,
+    })
+    const phongLeaf = tree.leavesMesh.material as THREE.MeshPhongMaterial
+    const leaf = new THREE.MeshStandardMaterial({
+      map: phongLeaf.map,
+      color: phongLeaf.color,
+      alphaTest: 0.5,
+      side: THREE.DoubleSide,
+      roughness: 0.85,
+      metalness: 0,
+      envMapIntensity: 0.5,
+    })
+    attachWind(leaf, v.kind === 'bush' ? 0.08 : 0.35)
+    phongBark.dispose()
+    phongLeaf.dispose()
+    variants.push({ kind: v.kind, branches, leaves, bark, leaf, scale })
+  }
+  console.warn(
+    `vegetation: generated ${variants.length} tree variants in ${Math.round(performance.now() - t0)} ms`,
+  )
+  return variants
+}
+
+// ---------------------------------------------------------------------------------------------
+// GPU grass
+
+const GRASS_COLORS = [
+  new THREE.Color('#4f8f2a'),
+  new THREE.Color('#6aa83a'),
+  new THREE.Color('#8fbf3f'),
+  new THREE.Color('#7aa02e'),
+]
+
+/** Two crossed, slightly bent quads with 3 segments; uv.y runs root → tip. 1 m tall at scale 1. */
+function bladeGeometry(): THREE.BufferGeometry {
+  const w = 0.1
+  const segs = 3
+  const positions: number[] = []
+  const uvs: number[] = []
+  const indices: number[] = []
+  for (const rot of [0, Math.PI / 2]) {
+    const base = positions.length / 3
+    for (let s = 0; s <= segs; s++) {
+      const t = s / segs
+      const bend = 0.12 * t * t
+      const half = (w / 2) * (1 - t * 0.85)
+      const c = Math.cos(rot)
+      const sn = Math.sin(rot)
+      positions.push(-half * c, t, -half * sn + bend, half * c, t, half * sn + bend)
+      uvs.push(0, t, 1, t)
+    }
+    for (let s = 0; s < segs; s++) {
+      const a = base + s * 2
+      indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2)
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2))
+  g.setIndex(indices)
+  g.computeVertexNormals()
+  return g
+}
+
+function grassMaterial(): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.9,
+    metalness: 0,
+    side: THREE.DoubleSide,
+    envMapIntensity: 0.4,
+  })
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = { value: 0 }
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uTime;\nvarying float vTip;')
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        vTip = uv.y;
+        {
+          #ifdef USE_INSTANCING
+            vec3 wp = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
+          #else
+            vec3 wp = vec3(0.0);
+          #endif
+          float phase = wp.x * 0.35 + wp.z * 0.27;
+          float k = uv.y * uv.y;
+          transformed.x += k * (0.08 * sin(uTime * 1.4 + phase) + 0.04 * sin(uTime * 3.1 + phase * 1.9));
+          transformed.z += k * 0.05 * sin(uTime * 1.1 + phase * 0.7);
+        }`,
+      )
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vTip;')
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        diffuseColor.rgb *= mix(0.55, 1.15, vTip);
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.1, 1.05, 0.7), vTip * 0.35);`,
+      )
+    m.userData.shader = shader
+  }
+  m.onBeforeRender = () => {
+    const shader = m.userData.shader as WindShader | undefined
+    if (shader) shader.uniforms.uTime.value = (performance.now() - windStart) / 1000
+  }
+  return m
+}
+
+// ---------------------------------------------------------------------------------------------
+// Planning
+
+type Placement = { x: number; z: number; scale: number; yaw: number; tilt: number }
+
+type Plan = {
+  trees: Placement[][]
+  plants: Map<string, Placement[]>
+  rocks: Map<string, Placement[]>
+  firs: Placement[]
+  trunks: Placement[]
+  grass: Placement[]
+}
+
+function planVegetation(
   track: Track,
   stops: Stop[],
   heightAt: (x: number, z: number) => number,
-): VegetationPlan {
+  variants: TreeVariant[],
+): Plan {
   const rand = mulberry32(2026)
-  const roadGrid = new RoadDistanceGrid(track)
+  const grid = new RoadDistanceGrid(track)
   const probe = new THREE.Vector3()
-
   const driveways = stops.map((s) => {
     const { point } = track.at(s.u)
     const a = point.clone().addScaledVector(s.inward, ROAD_W / 2)
     return { ax: a.x, az: a.z, bx: s.pad.x, bz: s.pad.z }
   })
 
-  const trees = category(TREES, true)
-  const pines = category(PINES, true)
-  const grass = category(GRASS, false)
-  const flowers = category(FLOWERS, false)
-  const bushes = category(BUSHES, false)
-  const rocks = category(ROCKS, true)
-  const pebbles = category(PEBBLES, false)
-  const stones = category(STONES, true)
-  const debris = category(DEBRIS, false)
-
-  /** Returns the road distance, or -1 when the spot is unusable. */
-  const clearance = (x: number, z: number, placeClear = PLACE_CLEAR): number => {
+  /** Distance to the road, or -1 when the spot is unusable. */
+  const clearance = (x: number, z: number, placeClear: number): number => {
     if (Math.abs(x) > EXTENT || Math.abs(z) > EXTENT) return -1
-    const coarse = roadGrid.at(x, z)
+    const coarse = grid.at(x, z)
     if (coarse < ROAD_CLEAR + 10) {
       probe.set(x, 0, z)
       if (track.nearest(probe).distance < ROAD_CLEAR) return -1
     }
-    for (const s of stops) {
-      if (Math.hypot(s.anchor.x - x, s.anchor.z - z) < placeClear) return -1
-    }
-    for (const d of driveways) {
-      if (segmentDistance(x, z, d.ax, d.az, d.bx, d.bz) < DRIVEWAY_CLEAR) return -1
-    }
+    for (const s of stops) if (Math.hypot(s.anchor.x - x, s.anchor.z - z) < placeClear) return -1
+    for (const d of driveways) if (segmentDistance(x, z, d.ax, d.az, d.bx, d.bz) < DRIVEWAY_CLEAR) return -1
     return coarse
   }
-
   const slopeAt = (x: number, z: number): number => {
     const dx = heightAt(x + 1.5, z) - heightAt(x - 1.5, z)
     const dz = heightAt(x, z + 1.5) - heightAt(x, z - 1.5)
     return Math.hypot(dx, dz) / 3
   }
+  const put = (list: Placement[], x: number, z: number, scale: number, tilt = 0) =>
+    list.push({ x, z, scale, yaw: rand() * Math.PI * 2, tilt: (rand() - 0.5) * tilt })
 
-  const m = new THREE.Matrix4()
-  const q = new THREE.Quaternion()
-  const pos = new THREE.Vector3()
-  const scl = new THREE.Vector3()
-  const up = new THREE.Vector3(0, 1, 0)
+  const broadleaf = variants.map((v, i) => (v.kind === 'broadleaf' ? i : -1)).filter((i) => i >= 0)
+  const pines = variants.map((v, i) => (v.kind === 'pine' ? i : -1)).filter((i) => i >= 0)
+  const bushes = variants.map((v, i) => (v.kind === 'bush' ? i : -1)).filter((i) => i >= 0)
+  const trees: Placement[][] = variants.map(() => [])
+  const plants = new Map<string, Placement[]>()
+  const rocks = new Map<string, Placement[]>()
+  for (const key of Object.values(PLANT_MODELS)) plants.set(key, [])
+  for (const key of Object.values(ROCK_MODELS)) rocks.set(key, [])
+  const firs: Placement[] = []
+  const trunks: Placement[] = []
+  const grass: Placement[] = []
+  const pickIndex = (list: number[]) => list[Math.min(list.length - 1, Math.floor(rand() * list.length))] ?? 0
+  const treeList = (index: number) => trees[index] ?? []
+  const listOf = (map: Map<string, Placement[]>, key: string) => map.get(key) ?? []
 
-  const place = (cat: Category, x: number, z: number, scale: number, tilt = 0) => {
-    const { index } = pick(cat.models, rand)
-    const yaw = rand() * Math.PI * 2
-    q.setFromAxisAngle(up, yaw)
-    if (tilt > 0) {
-      const t = new THREE.Quaternion().setFromEuler(
-        new THREE.Euler((rand() - 0.5) * tilt, 0, (rand() - 0.5) * tilt),
-      )
-      q.multiply(t)
-    }
-    pos.set(x, heightAt(x, z), z)
-    scl.setScalar(scale)
-    m.compose(pos, q, scl)
-    ;(cat.matrices[index] as THREE.Matrix4[]).push(m.clone())
-  }
-
-  // --- Sampling. Each pass draws candidates uniformly and keeps the ones its zone wants. -------
-  const total = 26000
-  for (let i = 0; i < total; i++) {
+  // --- Trees: uniform samples with zone rules. ----------------------------------------------
+  const TREE_BUDGET = 900
+  let treeCount = 0
+  for (let i = 0; i < 40000 && treeCount < TREE_BUDGET; i++) {
     const x = (rand() * 2 - 1) * EXTENT
     const z = (rand() * 2 - 1) * EXTENT
-    const road = clearance(x, z)
-    if (road < 0) continue
+    const road = clearance(x, z, PLACE_CLEAR)
+    if (road < 15) continue
     const h = heightAt(x, z)
-    if (h > 105) continue
+    if (h > MAX_HEIGHT) continue
     const slope = slopeAt(x, z)
-    if (slope > 1.2) continue
-
-    if (road < 60) {
-      // Pretty belt: groves, bushes, a few rocks and debris. Grass and flowers come from a denser pass.
-      const r = rand()
-      if (r < 0.1) place(trees, x, z, 7 + rand() * 4)
-      else if (r < 0.18) place(bushes, x, z, 3 + rand() * 2.5)
-      else if (r < 0.21) place(rocks, x, z, 2 + rand() * 2, 0.1)
-      else if (r < 0.25) place(debris, x, z, 3 + rand() * 2)
-      continue
-    }
-
-    if (h > 60) {
-      // Bare mountain sides: rock and stone, a rare pine on gentler slopes.
-      const r = rand()
-      if (r < 0.3) place(rocks, x, z, 4 + rand() * 4, 0.25)
-      else if (r < 0.5) place(stones, x, z, 3 + rand() * 4, 0.25)
-      else if (r < 0.56 && slope < 0.5) place(pines, x, z, 6 + rand() * 3)
-      continue
-    }
-
-    if (h > 20) {
-      // Hills: pine belts with rocks between them.
-      const r = rand()
-      if (r < 0.55) place(pines, x, z, 8 + rand() * 5)
-      else if (r < 0.62) place(rocks, x, z, 2.5 + rand() * 3, 0.15)
-      else if (r < 0.7) place(stones, x, z, 2 + rand() * 2, 0.15)
-      continue
-    }
-
-    if (road < 250) {
-      // Thick forest.
-      const r = rand()
-      if (r < 0.5) place(trees, x, z, 8 + rand() * 5)
-      else if (r < 0.6) place(pines, x, z, 8 + rand() * 4)
-      else if (r < 0.68) place(bushes, x, z, 3 + rand() * 3)
-      else if (r < 0.72) place(debris, x, z, 3 + rand() * 3)
-      continue
-    }
-
-    // Far fields: lighter forest fading out so the horizon keeps depth without a wall of trees.
+    if (slope > 0.9) continue
     const r = rand()
-    if (r < 0.16) place(trees, x, z, 9 + rand() * 4)
-    else if (r < 0.21) place(pines, x, z, 9 + rand() * 4)
-    else if (r < 0.24) place(rocks, x, z, 3 + rand() * 4, 0.15)
+    if (road < 80) {
+      // Groves beside the road: dense, mixed with bushes.
+      if (r < 0.32) {
+        put(treeList(pickIndex(h > 25 ? pines : broadleaf)), x, z, 0.85 + rand() * 0.4)
+        treeCount++
+      } else if (r < 0.4) put(treeList(pickIndex(bushes)), x, z, 0.8 + rand() * 0.6)
+      continue
+    }
+    if (road < 260) {
+      // Forest, thinning out with distance.
+      const density = 0.3 * (1 - (road - 80) / 180) + 0.08
+      if (r < density) {
+        put(treeList(pickIndex(h > 25 || rand() < 0.2 ? pines : broadleaf)), x, z, 0.9 + rand() * 0.5)
+        treeCount++
+      }
+      continue
+    }
+    if (r < 0.03) {
+      put(treeList(pickIndex(h > 20 ? pines : broadleaf)), x, z, 1 + rand() * 0.5)
+      treeCount++
+    }
   }
 
-  // --- Dense grass and flowers inside the belt next to the road. -------------------------------
-  const beltSamples = 30000
-  for (let i = 0; i < beltSamples; i++) {
-    // Sample by track position so the belt follows the road exactly.
+  // --- Rocks and stones on slopes and hills. --------------------------------------------------
+  const rockKeys = Object.values(ROCK_MODELS) as string[]
+  for (let i = 0, n = 0; i < 20000 && n < 300; i++) {
+    const x = (rand() * 2 - 1) * EXTENT
+    const z = (rand() * 2 - 1) * EXTENT
+    const road = clearance(x, z, PLACE_CLEAR)
+    if (road < 12) continue
+    const h = heightAt(x, z)
+    if (h > MAX_HEIGHT + 20) continue
+    const slope = slopeAt(x, z)
+    const chance = 0.05 + slope * 0.6 + (h > 20 ? 0.2 : 0)
+    if (rand() > chance) continue
+    const key = rockKeys[Math.floor(rand() * rockKeys.length)] ?? ROCK_MODELS.rock07
+    const big = key === ROCK_MODELS.boulder || key.startsWith('real/namaqualand')
+    put(listOf(rocks, key), x, z, big ? 2 + rand() * 3 : 4 + rand() * 14, 0.4)
+    n++
+  }
+
+  // --- Young firs and dead trunks in the belt. ------------------------------------------------
+  for (let i = 0, n = 0; i < 6000 && n < 60; i++) {
+    const x = (rand() * 2 - 1) * EXTENT
+    const z = (rand() * 2 - 1) * EXTENT
+    const road = clearance(x, z, PLACE_CLEAR)
+    if (road < 14 || road > 120 || heightAt(x, z) > MAX_HEIGHT) continue
+    put(firs, x, z, 3 + rand() * 3)
+    n++
+  }
+  for (let i = 0, n = 0; i < 3000 && n < 10; i++) {
+    const x = (rand() * 2 - 1) * EXTENT
+    const z = (rand() * 2 - 1) * EXTENT
+    const road = clearance(x, z, PLACE_CLEAR)
+    if (road < 16 || road > 100) continue
+    put(trunks, x, z, 1.4 + rand() * 0.6, 0.1)
+    n++
+  }
+
+  // --- Plant clumps in the belt, sampled along the road so they follow it. -------------------
+  for (let i = 0, n = 0; i < 12000 && n < 1500; i++) {
     const u = rand()
     const side = rand() < 0.5 ? -1 : 1
-    const dist = ROAD_CLEAR + 3 + rand() * rand() * 55
+    const dist = ROAD_CLEAR + 1 + rand() * rand() * 44
     const { point, normal } = track.at(u)
-    const x = point.x + normal.x * side * dist + (rand() - 0.5) * 4
-    const z = point.z + normal.z * side * dist + (rand() - 0.5) * 4
-    // Grass may come closer to the places than trees; the lead's footprints are small.
-    if (clearance(x, z, 30) < 0) continue
-    if (heightAt(x, z) > 60) continue
+    const x = point.x + normal.x * side * dist + (rand() - 0.5) * 6
+    const z = point.z + normal.z * side * dist + (rand() - 0.5) * 6
+    if (clearance(x, z, PLACE_CLEAR_SMALL) < 0 || heightAt(x, z) > MAX_HEIGHT) continue
     const r = rand()
-    if (r < 0.6) place(grass, x, z, 1.2 + rand() * 1.2)
-    else if (r < 0.9) place(flowers, x, z, 1 + rand() * 1)
-    else if (r < 0.925) place(pebbles, x, z, 1 + rand() * 1, 0.3)
-  }
-
-  // --- Rock clusters: a few seeds, several rocks around each. -------------------------------
-  for (let c = 0; c < 70; c++) {
-    const cx = (rand() * 2 - 1) * EXTENT
-    const cz = (rand() * 2 - 1) * EXTENT
-    if (clearance(cx, cz) < 15) continue
-    const count = 3 + Math.floor(rand() * 5)
-    for (let k = 0; k < count; k++) {
-      const x = cx + (rand() - 0.5) * 14
-      const z = cz + (rand() - 0.5) * 14
-      if (clearance(x, z) < 0 || heightAt(x, z) > 105) continue
-      place(rand() < 0.6 ? rocks : stones, x, z, 2.5 + rand() * 5, 0.3)
+    let key: string = PLANT_MODELS.heliophila
+    let scale = 0.8 + rand() * 0.4
+    // Bermuda, nettle and the dark grass clump read as black shards from the chase camera,
+    // so the belt mixes ferns, light grass clumps, dandelions and wildflowers only.
+    if (r < 0.36) {
+      key = PLANT_MODELS.fern
+      scale = 1 + rand() * 0.6
+    } else if (r < 0.62) {
+      key = PLANT_MODELS.grassB
+      scale = 3 + rand() * 2
+    } else if (r < 0.8) {
+      key = PLANT_MODELS.dandelion
+      scale = 2 + rand() * 1.5
     }
+    put(listOf(plants, key), x, z, scale)
+    n++
   }
 
-  return { trees, pines, grass, flowers, bushes, rocks, pebbles, stones, debris }
+  // --- GPU grass: dense within 12 m of the shoulder, thinning out to 45 m. --------------------
+  const GRASS_BUDGET = 90000
+  for (let i = 0, n = 0; i < GRASS_BUDGET * 2 && n < GRASS_BUDGET; i++) {
+    const u = rand()
+    const side = rand() < 0.5 ? -1 : 1
+    const t = rand()
+    const dist = ROAD_W / 2 + 1.2 + t * t * 44
+    const { point, normal } = track.at(u)
+    const x = point.x + normal.x * side * dist + (rand() - 0.5) * 3
+    const z = point.z + normal.z * side * dist + (rand() - 0.5) * 3
+    if (clearance(x, z, 14) < 0 || heightAt(x, z) > MAX_HEIGHT) continue
+    grass.push({ x, z, scale: 0.25 + rand() * 0.35, yaw: rand() * Math.PI * 2, tilt: 0 })
+    n++
+  }
+
+  return { trees, plants, rocks, firs, trunks, grass }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Entry point
 
 export async function scatterVegetation(
   root: THREE.Group,
@@ -377,95 +610,91 @@ export async function scatterVegetation(
   stops: Stop[],
   heightAt: (x: number, z: number) => number,
 ): Promise<void> {
-  const plan = planVegetation(track, stops, heightAt)
-  await Promise.all(Object.values(plan).map((cat) => instanceCategory(root, cat)))
-}
+  const variants = buildTreeVariants()
+  const plan = planVegetation(track, stops, heightAt, variants)
 
-/** Loads each model of a category once and emits one InstancedMesh per sub-mesh. */
-async function instanceCategory(root: THREE.Group, cat: Category): Promise<void> {
-  await Promise.all(
-    cat.models.map(async (path, i) => {
-      const matrices = cat.matrices[i] ?? []
-      if (!matrices.length) return
-      let group: THREE.Group
-      try {
-        group = await loadKitModel(`${path}.glb`)
-      } catch {
-        return
-      }
-      instanceGroup(root, group, matrices, cat.shadow)
-    }),
-  )
-}
+  const m = new THREE.Matrix4()
+  const q = new THREE.Quaternion()
+  const e = new THREE.Euler()
+  const v = new THREE.Vector3()
+  const s = new THREE.Vector3()
+  const compose = (p: Placement, extraScale: number, sy = 1) => {
+    e.set(p.tilt, p.yaw, p.tilt * 0.6)
+    q.setFromEuler(e)
+    v.set(p.x, heightAt(p.x, p.z), p.z)
+    const k = p.scale * extraScale
+    s.set(k, k * sy, k)
+    m.compose(v, q, s)
+    return m
+  }
+  const matricesFor = (list: Placement[], extraScale = 1) => list.map((p) => compose(p, extraScale).clone())
 
-const sharedFlat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 })
+  let drawCalls = 0
+  let treeInstances = 0
 
-/**
- * Instances a loaded model. Kenney nature pieces are several flat-coloured primitives (trunk,
- * leaves...); those get their material colour baked into a vertex colour attribute and are merged
- * into one geometry sharing one material, so the whole model is a single InstancedMesh. Textured
- * primitives, if any, are instanced on their own.
- */
-export function instanceGroup(
-  root: THREE.Group,
-  group: THREE.Group,
-  matrices: THREE.Matrix4[],
-  castShadow: boolean,
-): THREE.InstancedMesh[] {
-  group.updateMatrixWorld(true)
-  const inverseRoot = group.matrixWorld.clone().invert()
-  const out: THREE.InstancedMesh[] = []
-  const flat: THREE.BufferGeometry[] = []
-  const textured: { geometry: THREE.BufferGeometry; material: THREE.Material | THREE.Material[] }[] = []
-  const local = new THREE.Matrix4()
-
-  group.traverse((o) => {
-    if (!(o instanceof THREE.Mesh)) return
-    local.multiplyMatrices(inverseRoot, o.matrixWorld)
-    const geometry = (o.geometry as THREE.BufferGeometry).clone().applyMatrix4(local)
-    const material = Array.isArray(o.material) ? o.material[0] : o.material
-    const standard = material instanceof THREE.MeshStandardMaterial ? material : null
-    if (standard && !standard.map && !Array.isArray(o.material)) {
-      const count = geometry.getAttribute('position').count
-      const colors = new Float32Array(count * 3)
-      const c = standard.color
-      for (let i = 0; i < count; i++) {
-        colors[i * 3] = c.r
-        colors[i * 3 + 1] = c.g
-        colors[i * 3 + 2] = c.b
-      }
-      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-      // Keep only what the shared material reads, so every piece can be merged.
-      for (const name of Object.keys(geometry.attributes)) {
-        if (name !== 'position' && name !== 'normal' && name !== 'color') geometry.deleteAttribute(name)
-      }
-      if (!geometry.getAttribute('normal')) geometry.computeVertexNormals()
-      flat.push(geometry.index ? geometry.toNonIndexed() : geometry)
-    } else {
-      textured.push({ geometry, material: o.material })
+  // Trees: one InstancedMesh for branches and one for leaves per variant.
+  variants.forEach((variant, i) => {
+    const placements = plan.trees[i] ?? []
+    if (!placements.length) return
+    const matrices = matricesFor(placements, variant.scale)
+    const parts: Array<[THREE.BufferGeometry, THREE.MeshStandardMaterial]> = [
+      [variant.branches, variant.bark],
+      [variant.leaves, variant.leaf],
+    ]
+    for (const [geometry, material] of parts) {
+      const mesh = new THREE.InstancedMesh(geometry, material, matrices.length)
+      matrices.forEach((mat, k) => {
+        mesh.setMatrixAt(k, mat)
+      })
+      mesh.instanceMatrix.needsUpdate = true
+      mesh.castShadow = true
+      mesh.receiveShadow = true
+      mesh.frustumCulled = false
+      root.add(mesh)
+      drawCalls++
     }
+    treeInstances += placements.length
   })
 
-  const emit = (
-    geometry: THREE.BufferGeometry,
-    material: THREE.Material | THREE.Material[],
-    name: string,
-  ) => {
-    const mesh = new THREE.InstancedMesh(geometry, material, matrices.length)
-    for (let k = 0; k < matrices.length; k++) mesh.setMatrixAt(k, matrices[k] as THREE.Matrix4)
-    mesh.instanceMatrix.needsUpdate = true
-    mesh.castShadow = castShadow
-    mesh.receiveShadow = true
-    mesh.frustumCulled = false
-    mesh.name = name
-    root.add(mesh)
-    out.push(mesh)
+  // Grass blades.
+  if (plan.grass.length) {
+    const grassMesh = new THREE.InstancedMesh(bladeGeometry(), grassMaterial(), plan.grass.length)
+    const color = new THREE.Color()
+    const fallback = GRASS_COLORS[0] ?? new THREE.Color('#6aa83a')
+    plan.grass.forEach((p, k) => {
+      // Blades are 1 m tall at scale 1; keep them a little wider than tall.
+      grassMesh.setMatrixAt(k, compose(p, 1.1, 1 / 1.1))
+      color.copy(GRASS_COLORS[k % GRASS_COLORS.length] ?? fallback)
+      color.offsetHSL(Math.sin(k * 12.9898) * 0.01, 0, Math.sin(k * 78.233) * 0.04)
+      grassMesh.setColorAt(k, color)
+    })
+    grassMesh.instanceMatrix.needsUpdate = true
+    if (grassMesh.instanceColor) grassMesh.instanceColor.needsUpdate = true
+    grassMesh.castShadow = false
+    grassMesh.receiveShadow = true
+    grassMesh.frustumCulled = false
+    root.add(grassMesh)
+    drawCalls++
   }
 
-  if (flat.length) {
-    const merged = flat.length === 1 ? (flat[0] as THREE.BufferGeometry) : mergeGeometries(flat, false)
-    if (merged) emit(merged, sharedFlat, `veg:${group.name || 'model'}`)
-  }
-  for (const t of textured) emit(t.geometry, t.material, `veg:${group.name || 'model'}:textured`)
-  return out
+  // Photoscans: plants, rocks, young firs, dead trunks.
+  const jobs: Array<{ ref: string; placements: Placement[]; shadow: boolean; foliage?: boolean }> = []
+  for (const [ref, placements] of plan.plants) jobs.push({ ref, placements, shadow: false, foliage: true })
+  for (const [ref, placements] of plan.rocks) jobs.push({ ref, placements, shadow: true })
+  jobs.push({ ref: OTHER_MODELS.fir, placements: plan.firs, shadow: true })
+  jobs.push({ ref: OTHER_MODELS.trunk, placements: plan.trunks, shadow: true })
+  let scanInstances = 0
+  await Promise.all(
+    jobs.map(async (job) => {
+      if (!job.placements.length) return
+      const group = await loadReal(job.ref, job.foliage)
+      if (!group) return
+      drawCalls += instanceGroup(root, group, matricesFor(job.placements), job.shadow)
+      scanInstances += job.placements.length
+    }),
+  )
+
+  console.warn(
+    `vegetation: ${treeInstances} trees, ${plan.grass.length} grass blades, ${scanInstances} photoscan instances, ~${drawCalls} draw calls`,
+  )
 }

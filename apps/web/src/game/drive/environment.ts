@@ -1,19 +1,25 @@
 import * as THREE from 'three'
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js'
+import { loadTiling, TEXTURES_URL } from './materials'
 import type { Track } from './track'
 
 /**
- * The landscape around the road: a displaced terrain with rolling hills and a ring of
- * mountains, a gradient sky dome, drifting low-poly clouds, and fog that matches the horizon.
- * The road corridor is kept perfectly flat so the track, driveways and places sit on it.
+ * The landscape around the road: a photographic HDRI sky that also lights the scene, and a
+ * displaced terrain with a flat road corridor, rolling foothills and low mountains that meet
+ * the Alps painted in the HDRI. The terrain is shaded with three tiling PBR sets (grass, dirt,
+ * rock) blended by slope, height, a macro noise mask and wear along the road.
  */
 export type Environment = {
   /** Height of the terrain at world x,z. Exactly 0 anywhere within FLAT_RADIUS of the road centreline. */
   heightAt: (x: number, z: number) => number
   /** The terrain mesh (for raycasting taps). */
   terrain: THREE.Mesh
-  /** Advance clouds etc. */
+  /** Unit vector pointing toward the sun as seen in the HDRI, so the shadow light can be aligned. */
+  sunDirection: THREE.Vector3
   update: (dt: number, cameraPosition: THREE.Vector3) => void
   dispose: () => void
+  /** Resolves when the HDRI and textures are loaded. */
+  ready: Promise<void>
 }
 
 export const FLAT_RADIUS = 72
@@ -22,19 +28,12 @@ const BLEND_WIDTH = 40
 const TERRAIN_SIZE = 1600
 const TERRAIN_SEGMENTS = 220
 const MOUNTAIN_START = 260
-const SKY_RADIUS = 900
-const FOG_NEAR = 220
-const FOG_FAR = 700
+const FOG_NEAR = 250
+const FOG_FAR = 900
+const HDRI_URL = `${TEXTURES_URL}/alps_field/alps_field_2k.hdr`
 
-const SKY_ZENITH = '#4d9cf0'
-const SKY_MID = '#cfe6ff'
-const SKY_HORIZON = '#eef3f6'
-
-const GRASS = new THREE.Color('#5fb33a')
-const GRASS_DRY = new THREE.Color('#a6b83c')
-const ROCK = new THREE.Color('#7a7368')
-const ROCK_DARK = new THREE.Color('#5c5650')
-const SNOW = new THREE.Color('#f4f7fa')
+/** Road-distance grid cell size in metres. Shared by the height field and the shader. */
+const ROAD_CELL = 8
 
 // --------------------------------------------------------------------------- noise
 
@@ -85,9 +84,11 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 // --------------------------------------------------------------------------- height field
 
 type HeightField = {
-  /** Height from a precomputed grid of road distances (bilinear). */
   at: (x: number, z: number) => number
+  roadDistance: (x: number, z: number) => number
   centre: THREE.Vector2
+  /** The road-distance grid, for the shader. */
+  grid: { data: Float32Array; n: number; min: THREE.Vector2; size: number }
 }
 
 /**
@@ -109,22 +110,21 @@ function buildHeightField(track: Track): HeightField {
   }
   const centre = new THREE.Vector2((minX + maxX) / 2, (minZ + maxZ) / 2)
 
-  // Road-distance grid: 8 m cells over the whole terrain.
-  const cell = 8
-  const n = Math.ceil(TERRAIN_SIZE / cell) + 1
+  const n = Math.ceil(TERRAIN_SIZE / ROAD_CELL) + 1
   const half = TERRAIN_SIZE / 2
+  const min = new THREE.Vector2(centre.x - half, centre.y - half)
   const dist = new Float32Array(n * n)
   const probe = new THREE.Vector3()
   for (let j = 0; j < n; j++) {
     for (let i = 0; i < n; i++) {
-      probe.set(centre.x - half + i * cell, 0, centre.y - half + j * cell)
+      probe.set(min.x + i * ROAD_CELL, 0, min.y + j * ROAD_CELL)
       dist[j * n + i] = track.nearest(probe).distance
     }
   }
 
   const roadDistance = (x: number, z: number): number => {
-    const gx = THREE.MathUtils.clamp((x - (centre.x - half)) / cell, 0, n - 1.0001)
-    const gz = THREE.MathUtils.clamp((z - (centre.y - half)) / cell, 0, n - 1.0001)
+    const gx = THREE.MathUtils.clamp((x - min.x) / ROAD_CELL, 0, n - 1.0001)
+    const gz = THREE.MathUtils.clamp((z - min.y) / ROAD_CELL, 0, n - 1.0001)
     const i0 = Math.floor(gx)
     const j0 = Math.floor(gz)
     const fx = gx - i0
@@ -143,325 +143,418 @@ function buildHeightField(track: Track): HeightField {
     if (d < FLAT_RADIUS) return 0
     const rise = smoothstep(FLAT_RADIUS, FLAT_RADIUS + BLEND_WIDTH, d)
 
-    // Rolling hills: 4–18 m, low frequency with a touch of detail.
+    // Rolling foothills: 4–16 m, low frequency with a touch of detail.
     const hillNoise = fbm(x * 0.006 + 13.7, z * 0.006 + 71.3, 4)
-    const hills = 4 + 14 * hillNoise
+    const hills = 4 + 12 * hillNoise
 
-    // Mountains: a ring that starts ~260 m from the road and peaks toward the terrain edge.
+    // Low mountains that start ~260 m out and hand over to the Alps in the HDRI.
     const ring = smoothstep(MOUNTAIN_START, MOUNTAIN_START + 260, d)
     const ridge = 1 - Math.abs(2 * fbm(x * 0.0028 + 3.1, z * 0.0028 + 9.4, 5, 2.1, 0.55) - 1)
     const peaks = fbm(x * 0.0045 + 101, z * 0.0045 + 47, 3)
-    const mountain = ring * (60 + 80 * (0.55 * ridge + 0.45 * peaks))
+    const mountain = ring * (30 + 40 * (0.55 * ridge + 0.45 * peaks))
 
     return rise * (hills + mountain)
   }
 
-  return { at, centre }
-}
-
-// --------------------------------------------------------------------------- grass texture
-
-function makeGrassTexture(): THREE.CanvasTexture {
-  const size = 512
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D
-  const img = ctx.createImageData(size, size)
-  const data = img.data
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      // Tileable by sampling noise on a torus of integer period.
-      const u = x / size
-      const v = y / size
-      const period = 8
-      const nx = Math.cos(u * Math.PI * 2) * period
-      const ny = Math.sin(u * Math.PI * 2) * period
-      const nz = Math.cos(v * Math.PI * 2) * period
-      const nw = Math.sin(v * Math.PI * 2) * period
-      const blotch = fbm(nx + nz * 0.37 + 50, ny + nw * 0.37 + 50, 3)
-      const fine = valueNoise((nx + nw) * 4 + 200, (ny + nz) * 4 + 200)
-      // Multiply map: around 1.0 with blotches a little darker or lighter.
-      const l = 0.82 + blotch * 0.3 + (fine - 0.5) * 0.12
-      const i = (y * size + x) * 4
-      data[i] = Math.round(255 * THREE.MathUtils.clamp(l * 0.97, 0, 1))
-      data[i + 1] = Math.round(255 * THREE.MathUtils.clamp(l, 0, 1))
-      data[i + 2] = Math.round(255 * THREE.MathUtils.clamp(l * 0.9, 0, 1))
-      data[i + 3] = 255
-    }
-  }
-  ctx.putImageData(img, 0, 0)
-  const tex = new THREE.CanvasTexture(canvas)
-  tex.wrapS = THREE.RepeatWrapping
-  tex.wrapT = THREE.RepeatWrapping
-  tex.colorSpace = THREE.SRGBColorSpace
-  tex.anisotropy = 8
-  // UVs span the whole terrain once; one tile every 12 m.
-  tex.repeat.set(TERRAIN_SIZE / 12, TERRAIN_SIZE / 12)
-  return tex
+  return { at, roadDistance, centre, grid: { data: dist, n, min, size: (n - 1) * ROAD_CELL } }
 }
 
 // --------------------------------------------------------------------------- terrain
 
-function buildTerrain(field: HeightField): THREE.Mesh {
+type SplatSet = { color: THREE.Texture; normal: THREE.Texture; rough: THREE.Texture }
+
+function loadSet(folder: string, prefix: string): SplatSet {
+  return {
+    color: loadTiling(`${TEXTURES_URL}/${folder}/${prefix}_Color.jpg`, true),
+    normal: loadTiling(`${TEXTURES_URL}/${folder}/${prefix}_NormalGL.jpg`, false),
+    rough: loadTiling(`${TEXTURES_URL}/${folder}/${prefix}_Roughness.jpg`, false),
+  }
+}
+
+/**
+ * MeshStandardMaterial with the texture sampling replaced: three PBR sets tiled in world
+ * space, blended by per-vertex weights (rock, dirt) and a road-distance texture (wear).
+ */
+function buildTerrainMaterial(field: HeightField): {
+  material: THREE.MeshStandardMaterial
+  textures: THREE.Texture[]
+} {
+  const grass = loadSet('Grass005', 'Grass005_1K-JPG')
+  const dirt = loadSet('Ground037', 'Ground037_1K-JPG')
+  const rock = loadSet('Rock051', 'Rock051_1K-JPG')
+
+  const g = field.grid
+  // Distance in whole metres, clamped to 255, in an 8-bit texture: float textures are not
+  // filterable on every GPU and the wear strip only needs metre precision.
+  const bytes = new Uint8Array(g.n * g.n * 4)
+  for (let i = 0; i < g.n * g.n; i++) {
+    const d = Math.min(255, Math.round(g.data[i] ?? 255))
+    bytes[i * 4] = d
+    bytes[i * 4 + 1] = d
+    bytes[i * 4 + 2] = d
+    bytes[i * 4 + 3] = 255
+  }
+  const roadTex = new THREE.DataTexture(bytes, g.n, g.n, THREE.RGBAFormat, THREE.UnsignedByteType)
+  roadTex.minFilter = THREE.LinearFilter
+  roadTex.magFilter = THREE.LinearFilter
+  roadTex.wrapS = THREE.ClampToEdgeWrapping
+  roadTex.wrapT = THREE.ClampToEdgeWrapping
+  roadTex.needsUpdate = true
+
+  // A real map keeps USE_MAP/USE_NORMALMAP/USE_ROUGHNESSMAP defined so the standard pipeline
+  // compiles the branches we then replace.
+  const material = new THREE.MeshStandardMaterial({
+    map: grass.color,
+    normalMap: grass.normal,
+    roughnessMap: grass.rough,
+    roughness: 1,
+    metalness: 0,
+    envMapIntensity: 0.6,
+    vertexColors: true,
+  })
+
+  const uniforms = {
+    uGrassColor: { value: grass.color },
+    uGrassNormal: { value: grass.normal },
+    uGrassRough: { value: grass.rough },
+    uDirtColor: { value: dirt.color },
+    uDirtNormal: { value: dirt.normal },
+    uDirtRough: { value: dirt.rough },
+    uRockColor: { value: rock.color },
+    uRockNormal: { value: rock.normal },
+    uRockRough: { value: rock.rough },
+    uRoadDist: { value: roadTex },
+    uRoadMin: { value: g.min.clone() },
+    uRoadSize: { value: g.size },
+    uShoulder: { value: 6.2 }, // ROAD_W / 2 + shoulder (1.2); wear starts here
+    uWear: { value: 2.5 },
+  }
+
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, uniforms)
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        /* glsl */ `#include <common>
+        attribute vec3 splat;
+        varying vec3 vSplat;
+        varying vec3 vWorldPos;`,
+      )
+      .replace(
+        '#include <begin_vertex>',
+        /* glsl */ `#include <begin_vertex>
+        vSplat = splat;
+        vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
+      )
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        /* glsl */ `#include <common>
+        uniform sampler2D uGrassColor; uniform sampler2D uGrassNormal; uniform sampler2D uGrassRough;
+        uniform sampler2D uDirtColor;  uniform sampler2D uDirtNormal;  uniform sampler2D uDirtRough;
+        uniform sampler2D uRockColor;  uniform sampler2D uRockNormal;  uniform sampler2D uRockRough;
+        uniform sampler2D uRoadDist;
+        uniform vec2 uRoadMin;
+        uniform float uRoadSize;
+        uniform float uShoulder;
+        uniform float uWear;
+        varying vec3 vSplat;
+        varying vec3 vWorldPos;
+        // Sample a tiling set at two scales to hide the repeat.
+        vec4 tile2(sampler2D t, vec2 p, float s) {
+          vec4 a = texture2D(t, p / s);
+          vec4 b = texture2D(t, p / (s * 3.7) + vec2(0.31, 0.57));
+          return mix(a, b, 0.4);
+        }
+        float roadDistance(vec2 p) {
+          vec2 uv = (p - uRoadMin) / uRoadSize;
+          return texture2D(uRoadDist, clamp(uv, 0.0, 1.0)).r * 255.0;
+        }
+        struct Splat { float grass; float dirt; float rock; };
+        Splat splatWeights() {
+          float wear = 1.0 - smoothstep(uShoulder, uShoulder + uWear, roadDistance(vWorldPos.xz));
+          float rock = clamp(vSplat.x, 0.0, 1.0);
+          float dirt = clamp(max(vSplat.y, wear) * (1.0 - rock), 0.0, 1.0);
+          float grass = clamp(1.0 - rock - dirt, 0.0, 1.0);
+          float sum = grass + dirt + rock;
+          Splat s; s.grass = grass / sum; s.dirt = dirt / sum; s.rock = rock / sum;
+          return s;
+        }`,
+      )
+      .replace(
+        '#include <map_fragment>',
+        /* glsl */ `
+        Splat sw = splatWeights();
+        vec2 wp = vWorldPos.xz;
+        vec4 cGrass = tile2(uGrassColor, wp, 6.0);
+        vec4 cDirt = tile2(uDirtColor, wp, 5.0);
+        vec4 cRock = tile2(uRockColor, wp, 9.0);
+        vec4 sampledDiffuseColor = cGrass * sw.grass + cDirt * sw.dirt + cRock * sw.rock;
+        diffuseColor *= sampledDiffuseColor;`,
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        /* glsl */ `
+        float roughnessFactor = roughness;
+        {
+          Splat sr = splatWeights();
+          vec2 wr = vWorldPos.xz;
+          float r = tile2(uGrassRough, wr, 6.0).g * sr.grass + tile2(uDirtRough, wr, 5.0).g * sr.dirt + tile2(uRockRough, wr, 9.0).g * sr.rock;
+          roughnessFactor *= mix(0.85, 1.0, r);
+        }`,
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        /* glsl */ `
+        {
+          Splat sn = splatWeights();
+          vec2 wn = vWorldPos.xz;
+          vec3 mapN = (tile2(uGrassNormal, wn, 6.0).xyz * sn.grass + tile2(uDirtNormal, wn, 5.0).xyz * sn.dirt + tile2(uRockNormal, wn, 9.0).xyz * sn.rock) * 2.0 - 1.0;
+          mapN.xy *= 0.9;
+          // World-space UVs run along +X and +Z, so build the tangent frame from those axes.
+          vec3 T = normalize(mat3(viewMatrix) * vec3(1.0, 0.0, 0.0));
+          vec3 B = normalize(mat3(viewMatrix) * vec3(0.0, 0.0, 1.0));
+          T = normalize(T - normal * dot(normal, T));
+          B = normalize(B - normal * dot(normal, B));
+          normal = normalize(mat3(T, B, normal) * mapN);
+        }`,
+      )
+  }
+  // Different define per shader program so three does not reuse a cached variant.
+  material.customProgramCacheKey = () => 'terrain-splat-v1'
+
+  return {
+    material,
+    textures: [
+      grass.color,
+      grass.normal,
+      grass.rough,
+      dirt.color,
+      dirt.normal,
+      dirt.rough,
+      rock.color,
+      rock.normal,
+      rock.rough,
+      roadTex,
+    ],
+  }
+}
+
+function buildTerrain(field: HeightField): { mesh: THREE.Mesh; textures: THREE.Texture[] } {
   const geo = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, TERRAIN_SEGMENTS, TERRAIN_SEGMENTS)
   geo.rotateX(-Math.PI / 2)
   const pos = geo.getAttribute('position') as THREE.BufferAttribute
   const count = pos.count
-  const colors = new Float32Array(count * 3)
-  const c = new THREE.Color()
-  const tint = new THREE.Color()
 
   for (let i = 0; i < count; i++) {
     const x = pos.getX(i) + field.centre.x
     const z = pos.getZ(i) + field.centre.y
-    const h = field.at(x, z)
-    pos.setXYZ(i, x, h, z)
+    pos.setXYZ(i, x, field.at(x, z), z)
   }
   geo.computeVertexNormals()
   const nrm = geo.getAttribute('normal') as THREE.BufferAttribute
 
+  // splat = (rock, dirt, unused); color = subtle tint variation multiplied into the albedo.
+  const splat = new Float32Array(count * 3)
+  const colors = new Float32Array(count * 3)
+  const tint = new THREE.Color()
   for (let i = 0; i < count; i++) {
     const x = pos.getX(i)
     const z = pos.getZ(i)
     const h = pos.getY(i)
     const slope = 1 - nrm.getY(i) // 0 flat … 1 vertical
 
-    // Grass with gentle variation, dry patches where the noise says so.
+    const rock = Math.max(smoothstep(0.18, 0.42, slope), smoothstep(42, 70, h))
+    const dryMask = smoothstep(0.55, 0.78, fbm(x * 0.008 + 91, z * 0.008 + 17, 3))
+    const dirt = dryMask * (1 - rock) * 0.85
+    splat[i * 3] = rock
+    splat[i * 3 + 1] = dirt
+    splat[i * 3 + 2] = 0
+
     const variation = fbm(x * 0.02 + 7, z * 0.02 + 3, 3)
-    c.copy(GRASS)
-    tint.copy(GRASS).offsetHSL(0, 0, (variation - 0.5) * 0.08)
-    c.copy(tint)
-    const dry = smoothstep(0.58, 0.8, fbm(x * 0.008 + 91, z * 0.008 + 17, 3))
-    c.lerp(GRASS_DRY, dry * 0.7)
-
-    // Rock on slopes and up high, darker in the crevices.
-    const rocky = Math.max(smoothstep(0.22, 0.5, slope), smoothstep(45, 90, h))
-    tint.copy(ROCK).lerp(ROCK_DARK, smoothstep(0.4, 0.8, slope))
-    c.lerp(tint, rocky)
-
-    // Snow on the peaks, except on the steepest faces.
-    const snow = smoothstep(104, 122, h) * (1 - smoothstep(0.45, 0.75, slope))
-    c.lerp(SNOW, snow)
-
-    colors[i * 3] = c.r
-    colors[i * 3 + 1] = c.g
-    colors[i * 3 + 2] = c.b
+    const hue = (fbm(x * 0.004 + 31, z * 0.004 + 5, 2) - 0.5) * 0.06
+    tint.setHSL(0.26 + hue, 0.05, 0.5 + (variation - 0.5) * 0.14)
+    // Normalise around 1 so the texture colours stay honest.
+    colors[i * 3] = tint.r * 2
+    colors[i * 3 + 1] = tint.g * 2
+    colors[i * 3 + 2] = tint.b * 2
   }
+  geo.setAttribute('splat', new THREE.BufferAttribute(splat, 3))
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
   geo.computeBoundingSphere()
 
-  const material = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    map: makeGrassTexture(),
-    roughness: 1,
-    metalness: 0,
-  })
+  const { material, textures } = buildTerrainMaterial(field)
   const mesh = new THREE.Mesh(geo, material)
   mesh.name = 'terrain'
   mesh.receiveShadow = true
   // Sits just under the road's y=0 so the flat corridor never z-fights with the ribbons.
   mesh.position.y = -0.05
-  return mesh
+  return { mesh, textures }
 }
 
 // --------------------------------------------------------------------------- sky
 
-function buildSky(): THREE.Mesh {
-  const geo = new THREE.SphereGeometry(SKY_RADIUS, 32, 16)
-  const material = new THREE.ShaderMaterial({
-    side: THREE.BackSide,
-    depthWrite: false,
-    fog: false,
-    uniforms: {
-      zenith: { value: new THREE.Color(SKY_ZENITH) },
-      mid: { value: new THREE.Color(SKY_MID) },
-      horizon: { value: new THREE.Color(SKY_HORIZON) },
-    },
-    vertexShader: /* glsl */ `
-      varying vec3 vWorld;
-      void main() {
-        vec4 world = modelMatrix * vec4(position, 1.0);
-        vWorld = world.xyz;
-        gl_Position = projectionMatrix * viewMatrix * world;
-      }
-    `,
-    fragmentShader: /* glsl */ `
-      uniform vec3 zenith;
-      uniform vec3 mid;
-      uniform vec3 horizon;
-      varying vec3 vWorld;
-      void main() {
-        vec3 dir = normalize(vWorld - cameraPosition);
-        float y = clamp(dir.y, -0.2, 1.0);
-        // Haze band near the horizon, blue above.
-        float lower = smoothstep(-0.02, 0.12, y);
-        float upper = smoothstep(0.12, 0.65, y);
-        vec3 col = mix(horizon, mid, lower);
-        col = mix(col, zenith, upper);
-        gl_FragColor = vec4(col, 1.0);
-        #include <colorspace_fragment>
-      }
-    `,
-  })
-  const mesh = new THREE.Mesh(geo, material)
-  mesh.name = 'sky'
-  mesh.frustumCulled = false
-  mesh.renderOrder = -10
-  return mesh
+type SkyResult = {
+  background: THREE.Texture
+  envMap: THREE.Texture
+  sunDirection: THREE.Vector3
+  horizon: THREE.Color
 }
 
-// --------------------------------------------------------------------------- clouds
-
-type CloudLayer = {
-  mesh: THREE.InstancedMesh
-  positions: THREE.Vector3[]
-  speeds: number[]
-  scales: number[]
-}
-
-/** Builds one cloud "shape" out of a few overlapping spheres, merged into a single geometry. */
-function cloudShape(seed: number): THREE.BufferGeometry {
-  const puffs = 3 + Math.floor(hash2(seed, 1) * 4) // 3–6
-  const geos: THREE.BufferGeometry[] = []
-  for (let i = 0; i < puffs; i++) {
-    const r = 10 + hash2(seed, 10 + i) * 12
-    const g = new THREE.SphereGeometry(r, 7, 5)
-    const ox = (hash2(seed, 20 + i) - 0.5) * 42
-    const oy = (hash2(seed, 30 + i) - 0.5) * 6
-    const oz = (hash2(seed, 40 + i) - 0.5) * 22
-    g.scale(1, 0.55, 1)
-    g.translate(ox, oy, oz)
-    geos.push(g)
+/** Decode one HDR texel (RGBA, half or float) into linear RGB. */
+function texel(data: Uint16Array | Float32Array, index: number, out: THREE.Vector3): THREE.Vector3 {
+  const half = data instanceof Uint16Array
+  const r = data[index] ?? 0
+  const g = data[index + 1] ?? 0
+  const b = data[index + 2] ?? 0
+  if (half) {
+    return out.set(
+      THREE.DataUtils.fromHalfFloat(r),
+      THREE.DataUtils.fromHalfFloat(g),
+      THREE.DataUtils.fromHalfFloat(b),
+    )
   }
-  return mergeGeometries(geos)
+  return out.set(r, g, b)
 }
 
-/** Minimal merge for non-indexed-compatible geometries: positions and normals only. */
-function mergeGeometries(geos: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const parts = geos.map((g) => g.toNonIndexed())
-  let total = 0
-  for (const p of parts) total += p.getAttribute('position').count
-  const position = new Float32Array(total * 3)
-  const normal = new Float32Array(total * 3)
-  let offset = 0
-  for (const p of parts) {
-    const pa = p.getAttribute('position') as THREE.BufferAttribute
-    const na = p.getAttribute('normal') as THREE.BufferAttribute
-    position.set(pa.array as Float32Array, offset * 3)
-    normal.set(na.array as Float32Array, offset * 3)
-    offset += pa.count
-    p.dispose()
-  }
-  for (const g of geos) g.dispose()
-  const merged = new THREE.BufferGeometry()
-  merged.setAttribute('position', new THREE.BufferAttribute(position, 3))
-  merged.setAttribute('normal', new THREE.BufferAttribute(normal, 3))
-  merged.computeBoundingSphere()
-  return merged
-}
-
-function buildClouds(centre: THREE.Vector2): CloudLayer[] {
-  const material = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    emissive: 0xffffff,
-    emissiveIntensity: 0.25,
-    roughness: 1,
-    metalness: 0,
-    flatShading: true,
-  })
-  const variants = 4
-  const perVariant = 13 // 52 clouds total
-  const layers: CloudLayer[] = []
-  const m = new THREE.Matrix4()
-  for (let v = 0; v < variants; v++) {
-    const geo = cloudShape(v + 1)
-    const mesh = new THREE.InstancedMesh(geo, material, perVariant)
-    mesh.name = `clouds-${v}`
-    mesh.frustumCulled = false
-    const positions: THREE.Vector3[] = []
-    const speeds: number[] = []
-    const scales: number[] = []
-    for (let i = 0; i < perVariant; i++) {
-      const seed = v * 100 + i
-      const x = centre.x + (hash2(seed, 2) - 0.5) * 1400
-      const z = centre.y + (hash2(seed, 3) - 0.5) * 1400
-      const y = 90 + hash2(seed, 4) * 70
-      const s = 0.8 + hash2(seed, 5) * 1.2
-      positions.push(new THREE.Vector3(x, y, z))
-      speeds.push(1.2 + hash2(seed, 6) * 1.8)
-      scales.push(s)
-      m.makeScale(s, s, s).setPosition(x, y, z)
-      mesh.setMatrixAt(i, m)
+/**
+ * Finds the sun (brightest texel) and the average horizon colour in an equirect HDR.
+ * HDR files store the top scanline first and HDRLoader sets flipY so it lands at v = 1, so with
+ * flipY row 0 is the top of the image; without it, row 0 is the bottom.
+ */
+function analyseHdr(tex: THREE.DataTexture): { sun: THREE.Vector3; horizon: THREE.Color } {
+  const image = tex.image as { data: Uint16Array | Float32Array; width: number; height: number }
+  const { data, width, height } = image
+  const px = new THREE.Vector3()
+  let best = -1
+  let bestI = 0
+  let bestJ = 0
+  const stride = 4
+  // Coarse scan: every 2nd texel is plenty for a 2k map.
+  for (let j = 0; j < height; j += 2) {
+    for (let i = 0; i < width; i += 2) {
+      texel(data, (j * width + i) * stride, px)
+      const lum = px.x * 0.2126 + px.y * 0.7152 + px.z * 0.0722
+      if (lum > best) {
+        best = lum
+        bestI = i
+        bestJ = j
+      }
     }
-    mesh.instanceMatrix.needsUpdate = true
-    layers.push({ mesh, positions, speeds, scales })
   }
-  return layers
+  const u = (bestI + 0.5) / width
+  const rowFromBottom = tex.flipY ? height - 1 - bestJ : bestJ
+  const v = (rowFromBottom + 0.5) / height
+  // Inverse of three's equirectUv: u = atan(z, x) / 2π + 0.5, v = asin(y) / π + 0.5.
+  const theta = (u - 0.5) * Math.PI * 2
+  const phi = (v - 0.5) * Math.PI
+  const sun = new THREE.Vector3(
+    Math.cos(theta) * Math.cos(phi),
+    Math.sin(phi),
+    Math.sin(theta) * Math.cos(phi),
+  ).normalize()
+
+  // Horizon band: a row just above the horizon, averaged across all longitudes.
+  const horizonRowFromBottom = Math.round(height * 0.515)
+  const j = tex.flipY ? height - 1 - horizonRowFromBottom : horizonRowFromBottom
+  const acc = new THREE.Vector3()
+  let n = 0
+  for (let i = 0; i < width; i += 4) {
+    texel(data, (j * width + i) * stride, px)
+    acc.add(px)
+    n++
+  }
+  acc.divideScalar(Math.max(1, n))
+  // Clamp so a bright sky band does not wash the fog out.
+  const horizon = new THREE.Color(Math.min(acc.x, 1.2), Math.min(acc.y, 1.2), Math.min(acc.z, 1.2))
+  return { sun, horizon }
 }
 
-// --------------------------------------------------------------------------- public
+function loadSky(renderer: THREE.WebGLRenderer): Promise<SkyResult> {
+  return new Promise((resolve, reject) => {
+    const loader = new HDRLoader()
+    loader.setDataType(THREE.HalfFloatType)
+    loader.load(
+      HDRI_URL,
+      (tex) => {
+        tex.mapping = THREE.EquirectangularReflectionMapping
+        const { sun, horizon } = analyseHdr(tex)
+        const pmrem = new THREE.PMREMGenerator(renderer)
+        pmrem.compileEquirectangularShader()
+        const envMap = pmrem.fromEquirectangular(tex).texture
+        pmrem.dispose()
+        resolve({ background: tex, envMap, sunDirection: sun, horizon })
+      },
+      undefined,
+      (err) => reject(err instanceof Error ? err : new Error('failed to load the sky HDRI')),
+    )
+  })
+}
 
-export function buildEnvironment(scene: THREE.Scene, track: Track): Environment {
+// --------------------------------------------------------------------------- environment
+
+export function buildEnvironment(
+  scene: THREE.Scene,
+  track: Track,
+  renderer: THREE.WebGLRenderer,
+): Environment {
   const field = buildHeightField(track)
-  const root = new THREE.Group()
-  root.name = 'environment'
-  scene.add(root)
+  const { mesh: terrain, textures } = buildTerrain(field)
+  scene.add(terrain)
 
-  const terrain = buildTerrain(field)
-  root.add(terrain)
+  const previous = { background: scene.background, environment: scene.environment, fog: scene.fog }
+  // A plausible placeholder until the HDRI arrives: pale sky, fog to match.
+  const placeholder = new THREE.Color('#dfe9f3')
+  scene.background = placeholder
+  scene.fog = new THREE.Fog(placeholder, FOG_NEAR, FOG_FAR)
 
-  const sky = buildSky()
-  root.add(sky)
+  // Default: a late-morning sun from the south-east, replaced by the HDRI's real sun.
+  const sunDirection = new THREE.Vector3(0.45, 0.62, 0.64).normalize()
+  let sky: SkyResult | null = null
+  let disposed = false
 
-  const clouds = buildClouds(field.centre)
-  for (const layer of clouds) root.add(layer.mesh)
-
-  const horizon = new THREE.Color(SKY_HORIZON)
-  const previousBackground = scene.background
-  const previousFog = scene.fog
-  scene.background = horizon
-  scene.fog = new THREE.Fog(horizon, FOG_NEAR, FOG_FAR)
-
-  const matrix = new THREE.Matrix4()
-  const halfSpan = 700
-
-  const update = (dt: number, cameraPosition: THREE.Vector3) => {
-    // The sky dome rides with the camera so its horizon never shows an edge.
-    sky.position.set(cameraPosition.x, 0, cameraPosition.z)
-
-    for (const layer of clouds) {
-      const { mesh, positions, speeds, scales } = layer
-      for (let i = 0; i < positions.length; i++) {
-        const p = positions[i]
-        const speed = speeds[i]
-        const s = scales[i]
-        if (!p || speed === undefined || s === undefined) continue
-        p.x += speed * dt
-        if (p.x > field.centre.x + halfSpan) p.x -= halfSpan * 2
-        matrix.makeScale(s, s, s).setPosition(p.x, p.y, p.z)
-        mesh.setMatrixAt(i, matrix)
+  const ready = loadSky(renderer)
+    .then((result) => {
+      if (disposed) {
+        result.background.dispose()
+        result.envMap.dispose()
+        return
       }
-      mesh.instanceMatrix.needsUpdate = true
-    }
-  }
+      sky = result
+      scene.background = result.background
+      scene.environment = result.envMap
+      scene.backgroundIntensity = 1.0
+      scene.environmentIntensity = 0.9
+      scene.backgroundBlurriness = 0
+      scene.fog = new THREE.Fog(result.horizon, FOG_NEAR, FOG_FAR)
+      sunDirection.copy(result.sunDirection)
+    })
+    .catch((err) => {
+      console.error('sky failed, keeping the flat colour', err)
+    })
 
-  const dispose = () => {
-    scene.remove(root)
-    terrain.geometry.dispose()
-    const tm = terrain.material as THREE.MeshStandardMaterial
-    tm.map?.dispose()
-    tm.dispose()
-    sky.geometry.dispose()
-    ;(sky.material as THREE.Material).dispose()
-    for (const layer of clouds) {
-      layer.mesh.geometry.dispose()
-      layer.mesh.dispose()
-    }
-    ;(clouds[0]?.mesh.material as THREE.Material | undefined)?.dispose()
-    scene.background = previousBackground
-    scene.fog = previousFog
+  return {
+    heightAt: field.at,
+    terrain,
+    sunDirection,
+    ready,
+    update: () => {
+      // The HDRI sky needs no per-frame work; kept for API symmetry.
+    },
+    dispose: () => {
+      disposed = true
+      scene.remove(terrain)
+      terrain.geometry.dispose()
+      ;(terrain.material as THREE.Material).dispose()
+      for (const t of textures) t.dispose()
+      if (sky) {
+        sky.background.dispose()
+        sky.envMap.dispose()
+      }
+      scene.background = previous.background
+      scene.environment = previous.environment
+      scene.fog = previous.fog
+    },
   }
-
-  return { heightAt: field.at, terrain, update, dispose }
 }

@@ -12,7 +12,7 @@ Decisions from the design interview on 2026-10-19. The city's game design is in 
 ## Monorepo
 
 ```
-apps/web                 Next.js 16, Tailwind v4, next-intl, motion 12, Three.js
+apps/web                 Next.js 16, Tailwind v4, next-intl, motion 12, Three.js, ez-tree
 examples/<slug>/         Self-contained, clonable with degit; own Clerk app; own .env.example
 examples/<slug>/project.mdx   Content for /p/[slug]: what it shows, key moments, run locally
 packages/registry        Zod schema + entries; feeds gallery and city
