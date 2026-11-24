@@ -7,22 +7,26 @@ export const DRIVEWAY_W = 5
 
 /**
  * One closed loop. Waypoints are hand-placed so the drive has straights for speed and a few
- * sweeping bends, with room on both sides for the places. About 700 m around.
+ * sweeping bends, with room on both sides for the places. About 1,150 m around, so twenty-nine
+ * places sit roughly 40 m apart along the road (80 m between neighbours on the same side).
  */
-export const WAYPOINTS: Array<[number, number]> = [
-  [0, 0],
-  [60, -6],
-  [120, 10],
-  [170, 50],
-  [180, 110],
-  [150, 160],
-  [90, 185],
-  [20, 180],
-  [-40, 150],
-  [-70, 100],
-  [-60, 40],
-  [-30, 10],
-]
+const LOOP_SCALE = 1.65
+export const WAYPOINTS: Array<[number, number]> = (
+  [
+    [0, 0],
+    [60, -6],
+    [120, 10],
+    [170, 50],
+    [180, 110],
+    [150, 160],
+    [90, 185],
+    [20, 180],
+    [-40, 150],
+    [-70, 100],
+    [-60, 40],
+    [-30, 10],
+  ] as Array<[number, number]>
+).map(([x, z]) => [x * LOOP_SCALE, z * LOOP_SCALE])
 
 export class Track {
   readonly curve: THREE.CatmullRomCurve3

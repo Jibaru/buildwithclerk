@@ -7,7 +7,7 @@
 | Engine | Three.js r186 inside the Next.js 16 site at `apps/web` (no physics engine; arcade bicycle model) |
 | Platform | web: desktop with keyboard, phones with tap-to-drive |
 | View | third-person chase camera behind the van (Crazy Taxi / GTA III style), FOV 50 widening with speed |
-| Scope | a hub, not a racing game: one loop, sixteen places, zero failure states |
+| Scope | a hub, not a racing game: one loop, twenty-nine places, zero failure states |
 | References | the Clerk Van viewer (lime ground, soft sun, ACES), Crazy Taxi (chase cam, pick-ups), Kenney kits (toy diorama look) |
 
 The landing page **is** the drive: `/` is the canvas, full viewport, no scroll. "All projects" in the HUD lists every place and the van drives there by road. `/p/[slug]` is the full page and `/?at=slug` parks you at a place with its panel open. Everything reads the project registry.
@@ -39,7 +39,7 @@ Arcade car: 9 m/s² accel, 16 m/s top speed on asphalt and 9 m/s on grass, 32° 
 
 ### Places and the project panel
 
-- The track is a closed Catmull-Rom loop (~700 m). Place *i* sits at arc ratio `(i+0.5)/16`, alternating left and right, 34 m from the centreline, with a 5 m driveway to a purple parking pad 15 m out. Planned projects get a gray pad and desaturated models.
+- The track is a closed Catmull-Rom loop (~1,150 m). Place *i* sits at arc ratio `(i+0.5)/29`, alternating left and right, 34 m from the centreline, with a 5 m driveway to a purple parking pad 15 m out. Planned projects get a gray pad and desaturated models.
 - Each place is composed from Kenney kit pieces in `apps/web/src/game/drive/places.ts` (castle with four towers for Last Run, a lighthouse on the rocks for Uptime Pages, an antenna station for Relay, a pit lane for relay CLI, a crypt behind iron fences for Vault, a harbour with a cargo ship for Exodus, a mansion for Concierge, and so on). A floating sign names it.
 - Within 7 m of a pad the HUD shows "Press E to enter". E opens the HTML panel with the project; the URL becomes `/?at=<slug>`; the van freezes while the panel is open.
 - The van cannot drive through a place: a circle-versus-box push keeps it outside each place's footprint.
@@ -131,6 +131,7 @@ Credits ship in `apps/web/public/models/CREDITS.md`.
 
 ## Changelog
 
+- 2026-11-23: thirteen products from the Jibaru, crafter-station and crafter-games repositories joined the loop (places 16–28); the loop grew 1.65× to keep neighbours 80 m apart.
 - 2026-10-19: GDD created after a three-round design interview.
 - 2026-10-21 (later): realistic landscape: HDRI sky and IBL, PBR splat terrain, PBR road, ez-tree forests, GPU grass, Poly Haven photoscans. Built by two parallel agents (environment, vegetation) and integrated.
 - 2026-10-21: rebuilt in 3D as Clerk Drive: the Clerk Van on a single road loop with one detailed Kenney-kit place per project, chase camera, tap-to-drive autopilot. The Phaser city and the tile map are gone.
