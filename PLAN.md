@@ -30,6 +30,7 @@ docs/                    Catalog, design notes
 | What | Where |
 | --- | --- |
 | Site | Vercel, `buildwithclerk.com` |
+| Site, today | Crafter VPS (Dokploy, root `Dockerfile`), `buildwithclerk.crafter.run`, auto-deploys from `main` of `Jibaru/buildwithclerk` |
 | Web demos | Vercel, `<slug>.buildwithclerk.com` |
 | Go game server, Python API | Fly.io |
 | Expo apps | EAS |
