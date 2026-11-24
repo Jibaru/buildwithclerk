@@ -64,7 +64,10 @@
     "backToProjects": "Todos los proyectos",
     "plannedNotice": "Este proyecto está planeado para {milestone}. La página se completa cuando se publique.",
     "backlogNotice": "Este proyecto está en el backlog. ¿Quieres construirlo? Abre una propuesta en GitHub.",
-    "openInCity": "Abrir en la ciudad"
+    "openInCity": "Abrir en la ciudad",
+    "externalRepoHint": "Este producto vive en su propio repositorio. Clónalo y sigue su README.",
+    "privateRepoHint": "Este producto es de código cerrado. La demo es pública; el código no.",
+    "privateRepo": "privado"
   },
   "city": {
     "title": "Clerk City",

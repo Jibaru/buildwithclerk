@@ -63,8 +63,13 @@ export const projectSchema = z.object({
   links: z.object({
     demo: z.url().nullable(),
     repo: z.url(),
-    /** Path inside the monorepo, e.g. `examples/last-run`. `apps/web` for the site. */
-    path: z.string(),
+    /** True when the repository is private: the code button is hidden and no clone command is shown. */
+    repoPrivate: z.boolean().optional(),
+    /**
+     * Path inside the monorepo, e.g. `examples/last-run`. `apps/web` for the site.
+     * `null` for products that live in their own repository.
+     */
+    path: z.string().nullable(),
   }),
   city: citySchema,
 })

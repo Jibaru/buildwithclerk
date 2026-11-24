@@ -91,13 +91,15 @@ export function ProjectPanel({
                   {tg('liveDemo')} ↗
                 </ExternalLinkButton>
               ) : null}
-              <ExternalLinkButton
-                href={project.links.repo}
-                variant="secondary"
-                className="bg-white/10 text-white shadow-none ring-[0.5px] ring-white/15 hover:bg-white/15"
-              >
-                {tg('code')} ↗
-              </ExternalLinkButton>
+              {project.links.repoPrivate ? null : (
+                <ExternalLinkButton
+                  href={project.links.repo}
+                  variant="secondary"
+                  className="bg-white/10 text-white shadow-none ring-[0.5px] ring-white/15 hover:bg-white/15"
+                >
+                  {tg('code')} ↗
+                </ExternalLinkButton>
+              )}
               <LinkButton
                 href={`/p/${project.slug}`}
                 variant="ghost"

@@ -26,7 +26,11 @@ export function ProjectDetails({
   const card = dark
     ? 'rounded-xl bg-white/5 p-4 ring-[0.5px] ring-white/10 ring-inset'
     : 'rounded-xl bg-white p-4 shadow-card ring-[0.5px] ring-gray-950/10 dark:bg-gray-900 dark:ring-white/10'
-  const degit = `npx degit jibaru/buildwithclerk/${project.links.path} ${project.slug}\ncd ${project.slug}\ncp .env.example .env\npnpm install && pnpm dev`
+  const clone = project.links.path
+    ? `npx degit jibaru/buildwithclerk/${project.links.path} ${project.slug}\ncd ${project.slug}\ncp .env.example .env\npnpm install && pnpm dev`
+    : project.links.repoPrivate
+      ? null
+      : `git clone ${project.links.repo}.git ${project.slug}\ncd ${project.slug}`
 
   return (
     <div className="flex flex-col gap-8">
@@ -101,8 +105,14 @@ export function ProjectDetails({
 
       <section className="flex flex-col gap-3">
         <h3 className={cn('text-sm font-semibold', strong)}>{t('runLocally')}</h3>
-        <p className={cn('text-sm', muted)}>{t('runLocallyHint')}</p>
-        <CodeBlock code={degit} label="terminal" />
+        <p className={cn('text-sm', muted)}>
+          {clone === null
+            ? t('privateRepoHint')
+            : project.links.path
+              ? t('runLocallyHint')
+              : t('externalRepoHint')}
+        </p>
+        {clone ? <CodeBlock code={clone} label="terminal" /> : null}
       </section>
     </div>
   )

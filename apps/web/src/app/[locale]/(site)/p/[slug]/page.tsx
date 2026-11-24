@@ -68,9 +68,11 @@ export default async function ProjectPage({ params }: PageProps<'/[locale]/p/[sl
                 {tg('liveDemo')} ↗
               </ExternalLinkButton>
             ) : null}
-            <ExternalLinkButton href={project.links.repo} variant="secondary" size="lg">
-              {tg('code')} ↗
-            </ExternalLinkButton>
+            {project.links.repoPrivate ? null : (
+              <ExternalLinkButton href={project.links.repo} variant="secondary" size="lg">
+                {tg('code')} ↗
+              </ExternalLinkButton>
+            )}
           </div>
         </Container>
       </section>
@@ -101,14 +103,26 @@ export default async function ProjectPage({ params }: PageProps<'/[locale]/p/[sl
                 {t('openInCity')} →
               </LinkButton>
             </div>
-            <a
-              href={`${REPO_URL}/tree/main/${project.links.path}`}
-              target="_blank"
-              rel="noreferrer"
-              className="font-mono text-xs text-gray-500 hover:text-gray-950 dark:hover:text-white"
-            >
-              {project.links.path}
-            </a>
+            {project.links.path ? (
+              <a
+                href={`${REPO_URL}/tree/main/${project.links.path}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-xs text-gray-500 hover:text-gray-950 dark:hover:text-white"
+              >
+                {project.links.path}
+              </a>
+            ) : (
+              <a
+                href={project.links.repo}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono text-xs text-gray-500 hover:text-gray-950 dark:hover:text-white"
+              >
+                {project.links.repo.replace('https://github.com/', '')}
+                {project.links.repoPrivate ? ` · ${t('privateRepo')}` : ''}
+              </a>
+            )}
           </Card>
         </aside>
       </Container>

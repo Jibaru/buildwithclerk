@@ -9,8 +9,8 @@ const DOCS = 'https://clerk.com/docs'
 export const features = {
   'custom-ui-elements': {
     id: 'custom-ui-elements',
-    name: { en: 'Custom sign-in UI with Clerk Elements', es: 'UI de sign-in a medida con Clerk Elements' },
-    docs: `${DOCS}/customization/elements/overview`,
+    name: { en: 'Custom sign-in UI on Clerk hooks', es: 'UI de sign-in a medida sobre los hooks de Clerk' },
+    docs: `${DOCS}/guides/development/custom-flows/overview`,
   },
   'anonymous-to-account': {
     id: 'anonymous-to-account',
@@ -154,6 +154,21 @@ export const features = {
     id: 'sign-in-tokens',
     name: { en: 'Sign-in tokens', es: 'Tokens de sign-in' },
     docs: `${DOCS}/reference/backend/sign-in-tokens/create-sign-in-token`,
+  },
+  localizations: {
+    id: 'localizations',
+    name: { en: 'Localizations', es: 'Localizaciones' },
+    docs: `${DOCS}/guides/customizing-clerk/localization`,
+  },
+  waitlist: {
+    id: 'waitlist',
+    name: { en: 'Waitlist mode', es: 'Modo waitlist' },
+    docs: `${DOCS}/reference/components/authentication/waitlist`,
+  },
+  testing: {
+    id: 'testing',
+    name: { en: 'End-to-end tests with @clerk/testing', es: 'Tests end-to-end con @clerk/testing' },
+    docs: `${DOCS}/guides/development/testing/playwright/overview`,
   },
 } as const satisfies Record<string, Feature>
 
